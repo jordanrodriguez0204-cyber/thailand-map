@@ -8,7 +8,7 @@ export const CATEGORIES = {
 
 export const ALL_FILTER = 'tous'
 
-export const USERS = ['Jordan', 'Copine']
+export const USERS = ['Jordan', 'Abbey']
 
 export const STORAGE_KEYS = {
   auth:    'th_auth',
