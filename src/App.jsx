@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useSteps } from './hooks/useSteps'
@@ -13,7 +13,6 @@ import { Toast } from './components/Toast'
 import { STORAGE_KEYS, ALL_FILTER } from './constants'
 import { isSupabaseReady } from './lib/supabase'
 
-// Fix default Leaflet marker icons (Vite asset pipeline)
 import L from 'leaflet'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
@@ -21,6 +20,50 @@ import markerShadow from 'leaflet/dist/images/marker-shadow.png'
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({ iconRetinaUrl: markerIcon2x, iconUrl: markerIcon, shadowUrl: markerShadow })
 
+// ── Smooth wheel zoom (Google Maps feel) ───────────────────────────────────
+function SmoothWheelZoom() {
+  const map = useMap()
+  useEffect(() => {
+    map.scrollWheelZoom.disable()
+    let zoomTarget = map.getZoom()
+    let rafId = null
+
+    function onWheel(e) {
+      e.preventDefault()
+      // normalize delta across browsers/devices
+      const delta = e.deltaMode === 1
+        ? -e.deltaY * 0.05          // Firefox line mode
+        : -e.deltaY * 0.0025        // pixel mode (Chrome, Safari)
+      zoomTarget = Math.min(
+        Math.max(zoomTarget + delta, map.getMinZoom()),
+        map.getMaxZoom()
+      )
+      if (rafId) cancelAnimationFrame(rafId)
+      function animate() {
+        const current = map.getZoom()
+        const diff = zoomTarget - current
+        if (Math.abs(diff) < 0.001) {
+          map.setZoom(zoomTarget, { animate: false })
+          rafId = null
+          return
+        }
+        map.setZoom(current + diff * 0.18, { animate: false })
+        rafId = requestAnimationFrame(animate)
+      }
+      animate()
+    }
+
+    const el = map.getContainer()
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      if (rafId) cancelAnimationFrame(rafId)
+    }
+  }, [map])
+  return null
+}
+
+// ── Fly to step ─────────────────────────────────────────────────────────────
 function FlyTo({ step }) {
   const map = useMap()
   useEffect(() => {
@@ -48,6 +91,7 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 700)
   const [toast, setToast]             = useState(null)
   const [flyStep, setFlyStep]         = useState(null)
+  const [showRoute, setShowRoute]     = useState(true)
 
   const showToast = useCallback((msg, type = 'info', ms = 3000) => {
     setToast({ msg, type })
@@ -123,19 +167,21 @@ export default function App() {
 
       {/* ── Map ── */}
       <div style={{ flex: 1, position: 'relative', minWidth: 0 }}>
-        <button
-          onClick={() => setSidebarOpen((v) => !v)}
-          style={{
-            position: 'absolute', top: 12, left: 12, zIndex: 500,
-            background: '#fff', border: '1px solid #e5e7eb',
-            borderRadius: 10, padding: '8px 11px',
-            cursor: 'pointer', fontSize: 17, lineHeight: 1,
-            boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
-          }}
-        >
-          {sidebarOpen ? '◀' : '▶'}
-        </button>
+        {/* Controls top-left */}
+        <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 500, display: 'flex', gap: 8 }}>
+          <MapBtn onClick={() => setSidebarOpen((v) => !v)} title={sidebarOpen ? 'Masquer le panneau' : 'Afficher le panneau'}>
+            {sidebarOpen ? '◀' : '▶'}
+          </MapBtn>
+          <MapBtn
+            onClick={() => setShowRoute((v) => !v)}
+            title={showRoute ? 'Masquer le trajet' : 'Afficher le trajet'}
+            active={showRoute}
+          >
+            {showRoute ? '〰️' : '➖'}
+          </MapBtn>
+        </div>
 
+        {/* Title badge */}
         <div style={{
           position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
           zIndex: 500, background: 'rgba(255,255,255,0.96)',
@@ -148,17 +194,29 @@ export default function App() {
         </div>
 
         {loading ? (
-          <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#dde8ef', fontSize: 15, color: '#6b7280' }}>
+          <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#e8f1f4', fontSize: 15, color: '#6b7280' }}>
             Chargement…
           </div>
         ) : (
-          <MapContainer center={[13.5, 101.0]} zoom={6} style={{ width: '100%', height: '100%' }} zoomControl={false}>
+          <MapContainer
+            center={[13.5, 101.0]}
+            zoom={6}
+            style={{ width: '100%', height: '100%' }}
+            zoomControl={false}
+            zoomSnap={0}
+            zoomDelta={0.5}
+            wheelPxPerZoomLevel={80}
+            preferCanvas={true}
+          >
+            {/* CARTO Voyager — beaucoup plus nette et colorée qu'OSM standard */}
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              maxZoom={19}
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+              maxZoom={20}
+              subdomains="abcd"
             />
-            <RoutePolyline steps={visible} />
+            <SmoothWheelZoom />
+            {showRoute && <RoutePolyline steps={visible} />}
             {visible.map((step) => (
               <StepMarker
                 key={step.id}
@@ -199,8 +257,27 @@ export default function App() {
         * { box-sizing:border-box; margin:0; padding:0; }
         ::-webkit-scrollbar { width:4px; }
         ::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:4px; }
-        .leaflet-container { background:#dde8ef; }
+        .leaflet-container { background:#e8f1f4; }
       `}</style>
     </div>
+  )
+}
+
+function MapBtn({ onClick, title, active, children }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{
+        background: active === false ? 'rgba(255,255,255,0.7)' : '#fff',
+        border: '1px solid #e5e7eb',
+        borderRadius: 10, padding: '8px 11px',
+        cursor: 'pointer', fontSize: 17, lineHeight: 1,
+        boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
+        opacity: active === false ? 0.6 : 1,
+      }}
+    >
+      {children}
+    </button>
   )
 }
