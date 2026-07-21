@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+
+# Exports de styles MapTiler (contiennent la clé API)
+thailand-day.json
+thailand-night.json

@@ -3,21 +3,22 @@ import { Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import { MetroWidget } from './MetroWidget'
 
+const BED_SVG = `<svg width="12" height="12" viewBox="0 0 20 20" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M2 15V6"/><path d="M2 12h16v3"/><path d="M2 12V9.5h6.5V12"/><circle cx="5.2" cy="8" r="1.3" fill="#fff" stroke="none"/><path d="M9.5 9.5H15A3 3 0 0 1 18 12"/></svg>`
+
 function makeIcon(selected) {
   return L.divIcon({
     className: '',
     html: `<div class="pin-drop" style="
-      background:#fff;
-      border:2.5px solid ${selected ? '#6366f1' : '#d1d5db'};
-      border-radius:10px;
-      width:34px;height:34px;display:flex;align-items:center;justify-content:center;
-      font-size:18px;
-      box-shadow:0 3px 12px ${selected ? 'rgba(99,102,241,0.4)' : 'rgba(0,0,0,0.1)'};
+      background:#4ade80;
+      border:2px solid ${selected ? '#fff' : 'rgba(255,255,255,0.8)'};
+      border-radius:50%;
+      width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+      box-shadow:0 0 0 3px rgba(74,222,128,${selected ? 0.5 : 0.3}),0 3px 10px rgba(0,0,0,0.4);
       cursor:pointer;
-    ">🏨</div>`,
-    iconSize: [34, 34],
-    iconAnchor: [17, 34],
-    popupAnchor: [0, -38],
+    ">${BED_SVG}</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -28],
   })
 }
 
@@ -36,18 +37,18 @@ function HotelMarkerInner({ stepNom, hotel, selected, onDelete, onOpenStep }) {
 
           {/* Header */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-            <span style={{ fontWeight: 700, fontSize: 13.5, color: '#111827' }}>
-              🏨 {hotel.name || 'Hôtel sans nom'}
+            <span style={{ fontWeight: 700, fontSize: 13.5, color: '#e8f4fd' }}>
+              {hotel.name || 'Hôtel sans nom'}
             </span>
-            {selected && <span style={{ fontSize: 10, background: '#ede9fe', color: '#6366f1', borderRadius: 5, padding: '1px 5px', fontWeight: 700 }}>★ retenu</span>}
+            {selected && <span style={{ fontSize: 10, background: 'rgba(56,189,248,0.15)', color: '#38bdf8', borderRadius: 5, padding: '1px 5px', fontWeight: 700 }}>★ retenu</span>}
           </div>
-          <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 8 }}>
-            📍 {stepNom}
+          <div style={{ fontSize: 11, color: '#8fa8c4', marginBottom: 8 }}>
+            {stepNom}
           </div>
 
           {/* Adresse géocodée */}
           {hotel.geocoded_name && (
-            <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 6, fontStyle: 'italic' }}>
+            <div style={{ fontSize: 11, color: '#8fa8c4', marginBottom: 6, fontStyle: 'italic' }}>
               {hotel.geocoded_name}
             </div>
           )}
@@ -55,17 +56,17 @@ function HotelMarkerInner({ stepNom, hotel, selected, onDelete, onOpenStep }) {
           {/* Prix */}
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
             {hotel.price_per_night && (
-              <span style={{ fontSize: 11, background: '#eff6ff', color: '#1d4ed8', borderRadius: 6, padding: '2px 8px' }}>
+              <span style={{ fontSize: 11, background: 'rgba(56,189,248,0.12)', color: '#7dd3fc', borderRadius: 6, padding: '2px 8px' }}>
                 {hotel.price_per_night} CHF/nuit
               </span>
             )}
             {hotel.nights && (
-              <span style={{ fontSize: 11, background: '#f0fdf4', color: '#166534', borderRadius: 6, padding: '2px 8px' }}>
+              <span style={{ fontSize: 11, background: 'rgba(74,222,128,0.12)', color: '#4ade80', borderRadius: 6, padding: '2px 8px' }}>
                 {hotel.nights} nuit{hotel.nights > 1 ? 's' : ''}
               </span>
             )}
             {total && (
-              <span style={{ fontSize: 11, background: '#fef9c3', color: '#713f12', borderRadius: 6, padding: '2px 8px', fontWeight: 700 }}>
+              <span style={{ fontSize: 11, background: 'rgba(251,191,36,0.12)', color: '#fbbf24', borderRadius: 6, padding: '2px 8px', fontWeight: 700 }}>
                 = {total} CHF
               </span>
             )}
@@ -82,24 +83,24 @@ function HotelMarkerInner({ stepNom, hotel, selected, onDelete, onOpenStep }) {
               <button
                 onClick={onOpenStep}
                 style={{
-                  flex: 1, background: '#eef2ff', color: '#4f46e5',
+                  flex: 1, background: 'rgba(56,189,248,0.15)', color: '#38bdf8',
                   border: 'none', borderRadius: 8, padding: '6px 8px',
                   cursor: 'pointer', fontSize: 11, fontWeight: 600,
                 }}
               >
-                ✏️ Modifier
+                Modifier
               </button>
             )}
             {onDelete && !selected && (
               <button
                 onClick={onDelete}
                 style={{
-                  flex: 1, background: '#fee2e2', color: '#dc2626',
-                  border: 'none', borderRadius: 8, padding: '6px 8px',
+                  flex: 1, background: 'rgba(248,113,113,0.12)', color: '#f87171',
+                  border: '1px solid rgba(248,113,113,0.3)', borderRadius: 8, padding: '6px 8px',
                   cursor: 'pointer', fontSize: 11, fontWeight: 600,
                 }}
               >
-                🗑 Retirer
+                Retirer
               </button>
             )}
           </div>

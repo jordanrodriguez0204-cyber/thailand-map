@@ -1,13 +1,14 @@
+import { TrashIcon } from './icons'
 import { useState } from 'react'
 import { CATEGORIES } from '../constants'
 import { Modal } from './AddStepModal'
 
-const input = { width: '100%', padding: '9px 11px', border: '1.5px solid #e5e7eb', borderRadius: 9, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }
+const input = { width: '100%', padding: '9px 11px', background: '#061528', color: '#e8f4fd', border: '1.5px solid rgba(56,189,248,0.2)', borderRadius: 9, fontSize: 14, boxSizing: 'border-box', fontFamily: 'inherit' }
 
 function Field({ label, children }) {
   return (
     <div>
-      <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4, display: 'block' }}>{label}</label>
+      <label style={{ fontSize: 12, fontWeight: 600, color: '#cfe2f5', marginBottom: 4, display: 'block' }}>{label}</label>
       {children}
     </div>
   )
@@ -40,15 +41,13 @@ export function EditStepModal({ step, onSave, onDelete, onClose }) {
           <textarea style={{ ...input, resize: 'vertical', minHeight: 80 }} value={notes} onChange={(e) => setNotes(e.target.value)} />
         </Field>
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-          <button type="submit" style={{ flex: 1, background: '#6366f1', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+          <button type="submit" style={{ flex: 1, background: '#38bdf8', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 0', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
             Enregistrer
           </button>
           {!confirmDelete ? (
-            <button type="button" onClick={() => setConfirmDelete(true)} style={{ background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
-              🗑
-            </button>
+            <button type="button" onClick={() => setConfirmDelete(true)} style={{ background: 'rgba(248,113,113,0.12)', color: '#f87171', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}><TrashIcon size={15} /></button>
           ) : (
-            <button type="button" onClick={() => { onDelete(); onClose() }} style={{ background: '#dc2626', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+            <button type="button" onClick={() => { onDelete(); onClose() }} style={{ background: '#f87171', color: '#fff', border: 'none', borderRadius: 10, padding: '11px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
               Confirmer
             </button>
           )}

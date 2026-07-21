@@ -4,14 +4,79 @@ body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
+  background: #0d1f3c;
+  color: #e8f4fd;
 }
 
 #root { width: 100%; height: 100dvh; }
 
 ::-webkit-scrollbar { width: 4px; }
-::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(56,189,248,0.35); border-radius: 4px; }
 
-.leaflet-container { background: #dde8ef; }
+/* Focus clavier visible — jamais au clic (focus-visible) */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Feedback tactile discret sur tous les boutons */
+button { transition: opacity 0.15s, background 0.15s, border-color 0.15s; }
+button:active { opacity: 0.82; }
+
+.leaflet-container { background: #12141a; }
+
+/* Tooltip Leaflet — Coastal Indigo */
+.leaflet-tooltip {
+  background: #0e3468 !important;
+  color: #e8f4fd !important;
+  border: 1px solid rgba(56,189,248,0.25) !important;
+  border-radius: 8px !important;
+  font-size: 12px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4) !important;
+}
+.leaflet-tooltip::before { display: none !important; }
+
+/* Popup Leaflet — cohérent avec les panels sombres */
+.leaflet-popup-content-wrapper {
+  background: #0a2a52 !important;
+  color: #e8f4fd !important;
+  border: 1px solid rgba(56,189,248,0.15);
+  border-radius: 14px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5) !important;
+}
+.leaflet-popup-tip { background: #0a2a52 !important; }
+.leaflet-popup-close-button { color: #8fa8c4 !important; }
+
+/* Contrôles zoom Leaflet */
+.leaflet-control-zoom a {
+  background: #0e3468 !important;
+  color: #e8f4fd !important;
+  border-color: rgba(56,189,248,0.2) !important;
+}
+.leaflet-control-zoom a:hover { background: #12407e !important; }
+.leaflet-control-attribution {
+  background: rgba(13,31,60,0.8) !important;
+  color: #8fa8c4 !important;
+}
+.leaflet-control-attribution a { color: #7dd3fc !important; }
+
+/* Échelle km — discrète, Coastal Indigo */
+.leaflet-control-scale-line {
+  background: rgba(13,31,60,0.75) !important;
+  color: #8fa8c4 !important;
+  border: 1px solid rgba(56,189,248,0.25) !important;
+  border-top: none !important;
+  font-size: 10px !important;
+  box-shadow: none !important;
+}
+
+/* Mobile : remonte les contrôles du bas au-dessus de la barre d'actions */
+@media (max-width: 700px) {
+  .leaflet-bottom.leaflet-right,
+  .leaflet-bottom.leaflet-left { bottom: calc(64px + env(safe-area-inset-bottom)); }
+}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateX(-50%) translateY(6px); }

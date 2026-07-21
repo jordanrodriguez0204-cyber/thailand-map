@@ -39,6 +39,27 @@ App React 18 + Vite 5 + react-leaflet 4 + Supabase + Vercel PWA
 - UI : champ "Colle un lien Booking.com ici" en haut de chaque HotelCard (onglet Budget d'une étape), badge "via Booking", lien "Ouvrir ↗", détachable via ✕
 - En dev Vite (`npm run dev`), `/api` n'existe pas → le fallback s'active automatiquement. Tester l'API réelle uniquement en prod ou via `vercel dev`
 
+### Direction artistique — "Coastal Indigo" (depuis juillet 2026)
+- Thème sombre marine : bg `#0d1f3c`, surface `#0a2a52`, surélevé `#0e3468`, inputs `#061528`
+- Accents : aqua `#38bdf8` (action principale, texte sombre `#0d1f3c` sur bouton aqua), `#7dd3fc` (liens/hover), vert `#4ade80` (hôtels/validé), amber `#fbbf24`, rouge `#f87171`, violet `#a78bfa`
+- Textes : principal `#e8f4fd`, secondaire `#6a8aaa`, corps `#cfe2f5`
+- Tokens dans `src/styles/tokens.js` (`COLOR`, `FONT`, `RADIUS`) — utiliser pour tout nouveau style
+- Icônes catégories : SVG dans `src/components/icons/` (`<CategoryIcon category size color />` en JSX, `categoryIconSvg()` pour les L.divIcon Leaflet). Les emojis de CATEGORIES ne servent que de fallback texte
+- **Zéro emoji dans l'UI chrome** : toutes les icônes viennent de `src/components/icons/ui.jsx` (~45 icônes : Target/Bed/Wallet/Dots/Transport/Météo… + `<TransportIcon mode />`, `<Spinner />`, `<Avatar name />`, `uiIconSvg()` pour Leaflet). Exceptions : 🇹🇭 dans les titres (identité), emojis du contenu utilisateur et des tips dans `src/data/destinations.js`. Glyphes typographiques ★ ✓ ▲ autorisés
+- Contraste AA : texte secondaire = `#8fa8c4` (jamais l'ancien #6a8aaa, trop faible sur #0a2a52)
+- Focus clavier : `:focus-visible` global (outline aqua) dans index.css ; feedback `button:active` global
+- Overrides Leaflet (tooltip, popup, zoom, attribution) dans `src/index.css`
+- Mobile : la barre du bas et le bottom sheet "Plus" sont à zIndex 1100/1110 (au-dessus des contrôles Leaflet z=1000) ; l'attribution est remontée via media query dans index.css
+
+### Styles de carte (3 états)
+- `mapStyle` dans App.jsx : `'light' | 'dark' | 'satellite'`, persisté `th_map_style` (migration auto depuis `th_dark_map`)
+- Bouton cyclique dans le menu "Plus" : light → dark → satellite → light
+- Sombre = MapTiler `dataviz-dark` (minimaliste, fait pour données par-dessus) ; clair = `streets-v2` ; satellite = `hybrid` (.jpg)
+- TOUTES les tuiles en 512px retina : tileSize 512 + zoomOffset −1
+- Échelle km : `ScaleControl` (L.control.scale) bas-gauche, stylée dans index.css
+- Vols = arcs quadratiques incurvés (`arcPositions` dans RoutePolyline) ; autres modes = lignes droites
+- Markers compacts (22px sans badge) quand zoom < 7.2 et non sélectionnés (`compact` prop + `ZoomWatcher`)
+
 ### UI carte (barres d'actions)
 - Desktop : MapBtn avec labels — Recentrer / Hôtels / Budget visibles + menu "Plus" (dropdown) pour Bangkok BTS/MRT, Trajet, Métro Bangkok, Villes, Outils utiles
 - Mobile : barre du bas 4 items (Recentrer/Hôtels/Budget/Plus), zones tactiles ≥44px, "Plus" = bottom sheet ; `env(safe-area-inset-bottom)` géré

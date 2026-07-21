@@ -9,13 +9,14 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { CATEGORIES, ALL_FILTER } from '../constants'
+import { CategoryIcon, TransportIcon, GripIcon, PencilIcon, UndoIcon, PinIcon, MapIcon } from './icons'
 import { haversineKm } from '../utils/geo'
 import { TRANSPORT_MODES, estimateDuration, formatDuration } from '../data/destinations'
 
 // ── Carte étape épurée ───────────────────────────────────────────────────────
 const SortableItem = memo(function SortableItem({ step, selected, realtimeFlash, onSelect, onEdit }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: step.id })
-  const cat = CATEGORIES[step.categorie] || { color: '#6b7280', emoji: '📍', label: step.categorie }
+  const cat = CATEGORIES[step.categorie] || { color: '#8fa8c4', label: step.categorie }
   const isFlashing = realtimeFlash?.id === step.id
 
   return (
@@ -25,8 +26,8 @@ const SortableItem = memo(function SortableItem({ step, selected, realtimeFlash,
         transform: CSS.Transform.toString(transform),
         transition: transition || 'border-color 0.2s, background 0.2s',
         opacity: isDragging ? 0.5 : 1,
-        background: isFlashing ? '#fef9c3' : selected ? '#eef2ff' : '#fff',
-        border: `1.5px solid ${isFlashing ? '#fbbf24' : selected ? '#6366f1' : '#f0f0f0'}`,
+        background: isFlashing ? 'rgba(251,191,36,0.12)' : selected ? 'rgba(56,189,248,0.12)' : '#0a2a52',
+        border: `1.5px solid ${isFlashing ? '#fbbf24' : selected ? '#38bdf8' : 'rgba(56,189,248,0.1)'}`,
         borderLeft: `3px solid ${cat.color}`,
         borderRadius: 10,
         padding: '9px 8px 9px 6px',
@@ -40,32 +41,32 @@ const SortableItem = memo(function SortableItem({ step, selected, realtimeFlash,
     >
       <div
         {...attributes} {...listeners}
-        style={{ color: '#d1d5db', fontSize: 14, cursor: 'grab', padding: '0 2px', touchAction: 'none', flexShrink: 0, userSelect: 'none' }}
-      >⠿</div>
+        style={{ color: '#3a5a8a', fontSize: 14, cursor: 'grab', padding: '0 2px', touchAction: 'none', flexShrink: 0, userSelect: 'none' }}
+      ><GripIcon size={14} /></div>
 
       <div style={{
         width: 30, height: 30, borderRadius: 8,
-        background: cat.color + '18',
+        background: cat.color + '22',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 16, flexShrink: 0,
+        flexShrink: 0,
       }}>
-        {cat.emoji}
+        <CategoryIcon category={step.categorie} size={16} color={cat.color} />
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: cat.color }}>{step.ordre}</span>
-          <span style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#111827' }}>
+          <span style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#e8f4fd' }}>
             {step.nom}
           </span>
         </div>
-        <div style={{ fontSize: 11.5, color: '#6b7280', marginTop: 1 }}>{step.dates}</div>
+        <div style={{ fontSize: 11.5, color: '#8fa8c4', marginTop: 1 }}>{step.dates}</div>
       </div>
 
       <button
         onClick={(e) => { e.stopPropagation(); onEdit(step) }}
-        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d1d5db', fontSize: 13, padding: '2px 4px', flexShrink: 0 }}
-      >✏️</button>
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#3a5a8a', fontSize: 13, padding: '2px 4px', flexShrink: 0 }}
+      ><PencilIcon size={14} /></button>
     </div>
   )
 }, (prev, next) =>
@@ -84,19 +85,19 @@ function StepConnector({ from, to, segment }) {
   const tm = TRANSPORT_MODES[segment?.mode] || TRANSPORT_MODES.plane
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 8px 2px 50px', marginBottom: 3 }}>
-      <span style={{ fontSize: 11 }}>{tm.icon}</span>
+      <TransportIcon mode={segment?.mode || 'plane'} size={13} style={{ color: tm.color }} />
       <div style={{ flex: 1, borderTop: `1.5px dashed ${tm.color}55` }} />
-      <span style={{ fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap' }}>{km} km</span>
+      <span style={{ fontSize: 11, color: '#8fa8c4', whiteSpace: 'nowrap' }}>{km} km</span>
     </div>
   )
 }
 
 const MODES_LIST = [
-  { key: 'plane', icon: '✈️', label: 'Avion' },
-  { key: 'train', icon: '🚂', label: 'Train' },
-  { key: 'bus',   icon: '🚌', label: 'Bus' },
-  { key: 'ferry', icon: '⛴️', label: 'Ferry' },
-  { key: 'car',   icon: '🚗', label: 'Voiture' },
+  { key: 'plane', label: 'Avion' },
+  { key: 'train', label: 'Train' },
+  { key: 'bus',   label: 'Bus' },
+  { key: 'ferry', label: 'Ferry' },
+  { key: 'car',   label: 'Voiture' },
 ]
 
 function SegmentEditor({ seg, from, to, onUpdate }) {
@@ -111,62 +112,62 @@ function SegmentEditor({ seg, from, to, onUpdate }) {
   }
 
   return (
-    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #e5e7eb' }}>
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid rgba(255,255,255,0.07)' }}>
       {/* Mode transport */}
-      <div style={{ fontSize: 10.5, color: '#6b7280', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.4 }}>Mode de transport</div>
+      <div style={{ fontSize: 10.5, color: '#8fa8c4', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.4 }}>Mode de transport</div>
       <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap' }}>
         {MODES_LIST.map(m => (
           <button key={m.key} onClick={() => onUpdate({ mode: m.key, duration_override: null })}
             title={m.label}
             style={{
               padding: '5px 9px', borderRadius: 8, cursor: 'pointer', fontSize: 15,
-              background: seg.mode === m.key ? TRANSPORT_MODES[m.key].color : '#f3f4f6',
+              background: seg.mode === m.key ? TRANSPORT_MODES[m.key].color : 'rgba(255,255,255,0.06)',
               border: `2px solid ${seg.mode === m.key ? TRANSPORT_MODES[m.key].color : 'transparent'}`,
-              color: seg.mode === m.key ? '#fff' : '#374151',
+              color: seg.mode === m.key ? '#fff' : '#e8f4fd',
             }}
-          >{m.icon}</button>
+          ><TransportIcon mode={m.key} size={16} /></button>
         ))}
       </div>
 
       {/* Prix */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-        <label style={{ fontSize: 10.5, color: '#6b7280', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        <label style={{ fontSize: 10.5, color: '#8fa8c4', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
           Prix (CHF)
           <input
             type="number" min="0" placeholder="0"
             value={seg.price_chf ?? seg.price ?? ''}
             onChange={e => onUpdate({ price_chf: e.target.value ? +e.target.value : null, price: null })}
-            style={{ border: '1px solid #e5e7eb', borderRadius: 7, padding: '6px 8px', fontSize: 12, outline: 'none', fontWeight: 600 }}
+            style={{ background: '#061528', color: '#e8f4fd', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 7, padding: '6px 8px', fontSize: 12, outline: 'none', fontWeight: 600 }}
           />
         </label>
-        <label style={{ fontSize: 10.5, color: '#6b7280', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        <label style={{ fontSize: 10.5, color: '#8fa8c4', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
           Durée (h / min)
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <input type="number" min="0" max="48" placeholder="h"
               value={hLocal}
               onChange={e => setHLocal(e.target.value)}
               onBlur={applyDuration}
-              style={{ border: '1px solid #e5e7eb', borderRadius: 7, padding: '6px 6px', fontSize: 12, outline: 'none', width: '100%' }}
+              style={{ background: '#061528', color: '#e8f4fd', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 7, padding: '6px 6px', fontSize: 12, outline: 'none', width: '100%' }}
             />
             <span style={{ color: '#d1d5db', fontSize: 11 }}>:</span>
             <input type="number" min="0" max="59" placeholder="min"
               value={mLocal}
               onChange={e => setMLocal(e.target.value)}
               onBlur={applyDuration}
-              style={{ border: '1px solid #e5e7eb', borderRadius: 7, padding: '6px 6px', fontSize: 12, outline: 'none', width: '100%' }}
+              style={{ background: '#061528', color: '#e8f4fd', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 7, padding: '6px 6px', fontSize: 12, outline: 'none', width: '100%' }}
             />
           </div>
         </label>
       </div>
 
       {/* Notes */}
-      <label style={{ fontSize: 10.5, color: '#6b7280', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+      <label style={{ fontSize: 10.5, color: '#8fa8c4', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
         Notes (horaires, compagnie…)
         <input
           placeholder="Ex: Train de nuit 21h → 06h30, Thai Railways"
           value={seg.notes || ''}
           onChange={e => onUpdate({ notes: e.target.value })}
-          style={{ border: '1px solid #e5e7eb', borderRadius: 7, padding: '6px 8px', fontSize: 12, outline: 'none' }}
+          style={{ background: '#061528', color: '#e8f4fd', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 7, padding: '6px 8px', fontSize: 12, outline: 'none' }}
         />
       </label>
     </div>
@@ -178,7 +179,7 @@ function JourneyView({ steps, getSegment, updateSegment }) {
   const [openIdx, setOpenIdx] = useState(null)
 
   if (steps.length < 2) return (
-    <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, padding: '32px 16px' }}>
+    <div style={{ textAlign: 'center', color: '#8fa8c4', fontSize: 13, padding: '32px 16px' }}>
       Ajoute au moins 2 étapes pour voir les trajets.
     </div>
   )
@@ -200,9 +201,9 @@ function JourneyView({ steps, getSegment, updateSegment }) {
     <div style={{ padding: '10px 10px 16px' }}>
       {/* Résumé rapide */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
-        <StatChip label="Distance" value={`${totalKm.toLocaleString()} km`} color="#6366f1" />
-        <StatChip label="Temps" value={formatDuration(totalMinutes)} color="#0891b2" />
-        {totalPrice > 0 && <StatChip label="Budget" value={`${totalPrice} CHF`} color="#16a34a" />}
+        <StatChip label="Distance" value={`${totalKm.toLocaleString()} km`} color="#38bdf8" />
+        <StatChip label="Temps" value={formatDuration(totalMinutes)} color="#7dd3fc" />
+        {totalPrice > 0 && <StatChip label="Budget" value={`${totalPrice} CHF`} color="#4ade80" />}
       </div>
 
       {/* Liste segments */}
@@ -210,36 +211,36 @@ function JourneyView({ steps, getSegment, updateSegment }) {
         const isOpen = openIdx === i
         return (
         <div key={i} style={{
-          background: isOpen ? '#fff' : '#f9fafb',
+          background: isOpen ? '#0e3468' : '#0a2a52',
           borderRadius: 10, padding: '10px 12px',
           marginBottom: 7,
-          border: isOpen ? `1.5px solid ${s.tm.color}` : `1px solid transparent`,
+          border: isOpen ? `1.5px solid ${s.tm.color}` : `1px solid rgba(56,189,248,0.08)`,
           borderLeft: `3px solid ${s.tm.color}`,
           transition: 'background 0.15s',
         }}>
           {/* En-tête cliquable */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer' }}
             onClick={() => setOpenIdx(isOpen ? null : i)}>
-            <span style={{ fontSize: 18 }}>{s.tm.icon}</span>
+            <TransportIcon mode={s.seg.mode || 'plane'} size={17} style={{ color: s.tm.color }} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#e8f4fd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {s.from.nom} → {s.to.nom}
               </div>
-              <div style={{ fontSize: 11.5, color: '#6b7280' }}>{s.tm.label} · {s.km} km · {formatDuration(s.dur)}</div>
+              <div style={{ fontSize: 11.5, color: '#8fa8c4' }}>{s.tm.label} · {s.km} km · {formatDuration(s.dur)}</div>
             </div>
             <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
               {(s.seg.price_chf || s.seg.price) > 0 && (
-                <span style={{ fontSize: 10.5, background: '#f0fdf4', color: '#16a34a', borderRadius: 5, padding: '1px 6px', fontWeight: 700 }}>
+                <span style={{ fontSize: 10.5, background: 'rgba(74,222,128,0.15)', color: '#4ade80', borderRadius: 5, padding: '1px 6px', fontWeight: 700 }}>
                   {s.seg.price_chf || s.seg.price} CHF
                 </span>
               )}
-              <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 2 }}>{isOpen ? '▲' : '✏️'}</span>
+              <span style={{ fontSize: 12, color: '#8fa8c4', marginLeft: 2, display: 'inline-flex' }}>{isOpen ? '▲' : <PencilIcon size={12} />}</span>
             </div>
           </div>
 
           {/* Notes résumées */}
           {!isOpen && s.seg.notes && (
-            <div style={{ fontSize: 11.5, color: '#6b7280', fontStyle: 'italic', marginTop: 4, paddingLeft: 26 }}>
+            <div style={{ fontSize: 11.5, color: '#8fa8c4', fontStyle: 'italic', marginTop: 4, paddingLeft: 26 }}>
               {s.seg.notes}
             </div>
           )}
@@ -258,26 +259,26 @@ function JourneyView({ steps, getSegment, updateSegment }) {
       })}
 
       {/* Total */}
-      <div style={{ background: '#eef2ff', borderRadius: 10, padding: '10px 14px' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#4f46e5', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total voyage</div>
+      <div style={{ background: 'rgba(56,189,248,0.1)', borderRadius: 10, padding: '10px 14px', border: '1px solid rgba(56,189,248,0.15)' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#38bdf8', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total voyage</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
           <div>
-            <div style={{ fontSize: 11, color: '#6b7280' }}>Distance</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{totalKm.toLocaleString()} km</div>
+            <div style={{ fontSize: 11, color: '#8fa8c4' }}>Distance</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#e8f4fd' }}>{totalKm.toLocaleString()} km</div>
           </div>
           <div>
-            <div style={{ fontSize: 11, color: '#6b7280' }}>Temps de trajet</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{formatDuration(totalMinutes)}</div>
+            <div style={{ fontSize: 11, color: '#8fa8c4' }}>Temps de trajet</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#e8f4fd' }}>{formatDuration(totalMinutes)}</div>
           </div>
           {totalPrice > 0 && (
             <div>
-              <div style={{ fontSize: 11, color: '#6b7280' }}>Budget transport</div>
+              <div style={{ fontSize: 11, color: '#8fa8c4' }}>Budget transport</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>{totalPrice} CHF</div>
             </div>
           )}
           <div>
-            <div style={{ fontSize: 11, color: '#6b7280' }}>Étapes</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{steps.length}</div>
+            <div style={{ fontSize: 11, color: '#8fa8c4' }}>Étapes</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#e8f4fd' }}>{steps.length}</div>
           </div>
         </div>
       </div>
@@ -287,14 +288,14 @@ function JourneyView({ steps, getSegment, updateSegment }) {
 
 function StatChip({ label, value, color }) {
   return (
-    <div style={{ background: color + '14', borderRadius: 8, padding: '5px 10px', flex: 1, minWidth: 70 }}>
+    <div style={{ background: color + '1c', borderRadius: 8, padding: '5px 10px', flex: 1, minWidth: 70 }}>
       <div style={{ fontSize: 10.5, color, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{value}</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#e8f4fd' }}>{value}</div>
     </div>
   )
 }
 
-function Badge({ children, color = '#f3f4f6', textColor = '#374151' }) {
+function Badge({ children, color = 'rgba(255,255,255,0.06)', textColor = '#cfe2f5' }) {
   return (
     <span style={{ fontSize: 11, background: color, color: textColor, borderRadius: 6, padding: '2px 8px', fontWeight: 500 }}>
       {children}
@@ -325,24 +326,24 @@ export function StepList({ steps, selectedId, onSelect, onEdit, onReorder, filte
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', fontFamily: 'Inter, system-ui, sans-serif' }}>
 
       {/* ── En-tête ── */}
-      <div style={{ padding: '12px 12px 0', borderBottom: '1px solid #f3f4f6' }}>
+      <div style={{ padding: '12px 12px 0', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>🇹🇭 Thaïlande · Août 2026</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: '#e8f4fd' }}>🇹🇭 Thaïlande · Août 2026</div>
           <div style={{ display: 'flex', gap: 5 }}>
             {canUndo && (
-              <button onClick={onUndo} title="Annuler" style={{ ...headerBtn, background: '#fef3c7', color: '#92400e' }}>↩</button>
+              <button onClick={onUndo} title="Annuler" style={{ ...headerBtn, background: 'rgba(251,191,36,0.15)', color: '#fbbf24' }}><UndoIcon size={14} /></button>
             )}
-            <button onClick={onAdd} style={{ ...headerBtn, background: '#6366f1', color: '#fff' }}>+ Étape</button>
+            <button onClick={onAdd} style={{ ...headerBtn, background: '#38bdf8', color: '#0d1f3c' }}>+ Étape</button>
           </div>
         </div>
 
         {/* Tabs Étapes / Trajets */}
         <div style={{ display: 'flex', gap: 0, marginBottom: 0 }}>
-          {[['steps', '📍 Étapes'], ['journey', '🗺️ Trajets']].map(([key, label]) => (
+          {[['steps', 'Étapes'], ['journey', 'Trajets']].map(([key, label]) => (
             <button key={key} onClick={() => setView(key)} style={{
-              flex: 1, background: 'none', border: 'none', borderBottom: `2px solid ${view === key ? '#6366f1' : 'transparent'}`,
+              flex: 1, background: 'none', border: 'none', borderBottom: `2px solid ${view === key ? '#38bdf8' : 'transparent'}`,
               padding: '7px 4px', fontSize: 12, fontWeight: view === key ? 700 : 400,
-              color: view === key ? '#6366f1' : '#9ca3af',
+              color: view === key ? '#38bdf8' : '#8fa8c4',
               cursor: 'pointer', transition: 'all 0.15s',
             }}>{label}</button>
           ))}
@@ -354,16 +355,20 @@ export function StepList({ steps, selectedId, onSelect, onEdit, onReorder, filte
         <>
           {/* Filtres catégorie */}
           {categories.length > 2 && (
-            <div style={{ padding: '8px 12px 4px', display: 'flex', gap: 4, flexWrap: 'wrap', borderBottom: '1px solid #f3f4f6' }}>
+            <div style={{ padding: '8px 12px 4px', display: 'flex', gap: 4, flexWrap: 'wrap', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
               {categories.map((cat) => (
                 <button key={cat} onClick={() => onFilterChange(cat)} style={{
-                  background: filter === cat ? '#6366f1' : '#f3f4f6',
-                  color: filter === cat ? '#fff' : '#374151',
+                  background: filter === cat ? '#38bdf8' : 'rgba(255,255,255,0.06)',
+                  color: filter === cat ? '#0d1f3c' : '#e8f4fd',
                   border: 'none', borderRadius: 20,
                   padding: '3px 9px', fontSize: 11, cursor: 'pointer',
-                  fontWeight: filter === cat ? 600 : 400, transition: 'all 0.15s',
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  fontWeight: filter === cat ? 700 : 400, transition: 'all 0.15s',
                 }}>
-                  {cat === ALL_FILTER ? 'Tous' : `${CATEGORIES[cat]?.emoji || ''} ${cat}`}
+                  {cat !== ALL_FILTER && CATEGORIES[cat] && (
+                    <CategoryIcon category={cat} size={12} color={filter === cat ? '#0d1f3c' : CATEGORIES[cat].color} />
+                  )}
+                  {cat === ALL_FILTER ? 'Tous' : cat}
                 </button>
               ))}
             </div>
@@ -393,14 +398,14 @@ export function StepList({ steps, selectedId, onSelect, onEdit, onReorder, filte
               </SortableContext>
             </DndContext>
             {visible.length === 0 && (
-              <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13, marginTop: 32 }}>
+              <div style={{ textAlign: 'center', color: '#8fa8c4', fontSize: 13, marginTop: 32 }}>
                 Aucune étape dans cette catégorie
               </div>
             )}
           </div>
 
           {/* Footer */}
-          <div style={{ padding: '7px 12px', borderTop: '1px solid #f3f4f6', fontSize: 11, color: '#c0c0c0', display: 'flex', justifyContent: 'space-between' }}>
+          <div style={{ padding: '7px 12px', borderTop: '1px solid rgba(255,255,255,0.07)', fontSize: 11, color: '#8fa8c4', display: 'flex', justifyContent: 'space-between' }}>
             <span>{visible.length} étape{visible.length > 1 ? 's' : ''}</span>
             <span>{steps.length > 1 ? `${steps.slice(1).reduce((a, s, i) => a + Math.round(haversineKm(steps[i].lat, steps[i].lng, s.lat, s.lng)), 0).toLocaleString()} km` : ''}</span>
           </div>

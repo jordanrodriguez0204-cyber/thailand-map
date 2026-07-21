@@ -54,8 +54,8 @@ export function MetroLayer({ visibleLines }) {
           >
             <Tooltip direction="top" offset={[0, -radius - 2]} opacity={1}>
               <div style={{ fontSize: 12, fontWeight: 700, color: line.color }}>{st.name}</div>
-              <div style={{ fontSize: 10, color: '#6b7280' }}>{line.name}</div>
-              {st.interchange && <div style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>🔄 Correspondance</div>}
+              <div style={{ fontSize: 10, color: '#8fa8c4' }}>{line.name}</div>
+              {st.interchange && <div style={{ fontSize: 10, color: '#f59e0b', fontWeight: 600 }}>⇄ Correspondance</div>}
             </Tooltip>
           </CircleMarker>
         )

@@ -1,3 +1,4 @@
+import { ScalesIcon, CloseIcon } from './icons'
 import { useState } from 'react'
 import { ComparePanel } from './ComparePanel'
 
@@ -21,8 +22,8 @@ export function ItineraryBar({ itineraries, activeItinId, getAllStepsForCompare,
     <>
       <div style={{
         padding: '6px 10px',
-        borderBottom: '1px solid #f3f4f6',
-        background: '#fafafa',
+        borderBottom: '1px solid rgba(255,255,255,0.07)',
+        background: '#0e3468',
       }}>
         {/* Tabs row */}
         <div style={{ display: 'flex', gap: 4, alignItems: 'center', overflowX: 'auto', paddingBottom: 2 }}>
@@ -42,6 +43,7 @@ export function ItineraryBar({ itineraries, activeItinId, getAllStepsForCompare,
                     }}
                     style={{
                       border: `1.5px solid ${itin.color}`, borderRadius: 8,
+                      background: '#061528', color: '#e8f4fd',
                       padding: '4px 8px', fontSize: 11, fontWeight: 600,
                       outline: 'none', width: 100,
                     }}
@@ -54,9 +56,9 @@ export function ItineraryBar({ itineraries, activeItinId, getAllStepsForCompare,
                     style={{
                       display: 'flex', alignItems: 'center', gap: 5,
                       padding: '5px 9px', borderRadius: 8, cursor: 'pointer',
-                      background: active ? itin.color : '#f3f4f6',
+                      background: active ? itin.color : 'rgba(255,255,255,0.06)',
                       border: `1.5px solid ${active ? itin.color : 'transparent'}`,
-                      color: active ? '#fff' : '#374151',
+                      color: active ? '#fff' : '#cfe2f5',
                       fontSize: 11, fontWeight: 600,
                       transition: 'all 0.15s',
                     }}
@@ -87,8 +89,8 @@ export function ItineraryBar({ itineraries, activeItinId, getAllStepsForCompare,
               title="Nouvel itinéraire"
               style={{
                 flexShrink: 0, width: 26, height: 26, borderRadius: 8,
-                border: '1.5px dashed #d1d5db', background: 'transparent',
-                cursor: 'pointer', fontSize: 16, color: '#9ca3af',
+                border: '1.5px dashed rgba(56,189,248,0.35)', background: 'transparent',
+                cursor: 'pointer', fontSize: 16, color: '#8fa8c4',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 transition: 'all 0.15s',
               }}
@@ -102,11 +104,11 @@ export function ItineraryBar({ itineraries, activeItinId, getAllStepsForCompare,
               title="Comparer les itinéraires"
               style={{
                 flexShrink: 0, padding: '5px 8px', borderRadius: 8,
-                border: '1.5px solid #e5e7eb', background: '#fff',
-                cursor: 'pointer', fontSize: 11, color: '#6b7280', fontWeight: 600,
+                border: '1.5px solid rgba(56,189,248,0.2)', background: '#0a2a52',
+                cursor: 'pointer', fontSize: 11, color: '#8fa8c4', fontWeight: 600,
                 marginLeft: 2,
               }}
-            >⚖️</button>
+            ><ScalesIcon size={13} /></button>
           )}
         </div>
 

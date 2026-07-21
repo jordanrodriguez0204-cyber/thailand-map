@@ -24,6 +24,9 @@ import { useItineraries } from './hooks/useItineraries'
 import { ItineraryBar } from './components/ItineraryBar'
 const ExternalToolsPanel = lazy(() => import('./components/ExternalToolsPanel').then(m => ({ default: m.ExternalToolsPanel })))
 import { STORAGE_KEYS, ALL_FILTER, CATEGORIES } from './constants'
+import { CategoryIcon, TargetIcon, BedIcon, WalletIcon, DotsIcon, MenuIcon, CloseIcon,
+  CityIcon, RouteIcon, MetroIcon, MapIcon, LinkIcon, MoonIcon, SatelliteIcon, SunIcon,
+  DownloadIcon, UploadIcon, WifiOffIcon, Avatar, Spinner } from './components/icons'
 import { exportBackup, importBackup } from './utils/backup'
 import { METRO_LINES } from './data/bangkokMetro'
 import { isSupabaseReady } from './lib/supabase'
@@ -75,6 +78,29 @@ function SmoothWheelZoom() {
       if (rafId) cancelAnimationFrame(rafId)
     }
   }, [map])
+  return null
+}
+
+// ── Échelle km (bas gauche, stylée via CSS) ─────────────────────────────────
+function ScaleControl() {
+  const map = useMap()
+  useEffect(() => {
+    const ctl = L.control.scale({ metric: true, imperial: false, position: 'bottomleft', maxWidth: 90 })
+    ctl.addTo(map)
+    return () => ctl.remove()
+  }, [map])
+  return null
+}
+
+// ── Suivi du zoom : markers compacts à faible zoom (dédoublonne le sud) ─────
+function ZoomWatcher({ onZoom }) {
+  const map = useMap()
+  useEffect(() => {
+    const fn = () => onZoom(map.getZoom())
+    map.on('zoomend', fn)
+    fn()
+    return () => map.off('zoomend', fn)
+  }, [map, onZoom])
   return null
 }
 
@@ -156,12 +182,17 @@ export default function App() {
   const [showHotels, setShowHotels]   = useState(false)
   const [hotelCompare, setHotelCompare] = useState(null) // null | { stepId: string|null }
   const [showMore, setShowMore]       = useState(false)
-  const [darkMap, setDarkMap]         = useState(() => localStorage.getItem('th_dark_map') === '1')
+  const [mapStyle, setMapStyle]       = useState(() => {
+    const saved = localStorage.getItem('th_map_style')
+    if (saved === 'light' || saved === 'dark' || saved === 'satellite') return saved
+    return localStorage.getItem('th_dark_map') === '1' ? 'dark' : 'light' // migration ancien réglage
+  })
   const [showTransit, setShowTransit] = useState(true)
   const [visibleLines, setVisibleLines] = useState(() =>
     Object.fromEntries(Object.keys(METRO_LINES).map(k => [k, true]))
   )
   const [flyTarget, setFlyTarget]     = useState(null)
+  const [mapZoom, setMapZoom]         = useState(6)
   const [fitTrigger, setFitTrigger]   = useState(0)
   const [showCityMenu, setShowCityMenu] = useState(false)
   const [showTools, setShowTools]       = useState(false)
@@ -183,12 +214,12 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (!online) showToast('📡 Hors-ligne — données en cache', 'offline', 5000)
-    else if (online && isSupabaseReady) showToast('✅ Connecté', 'success', 2000)
+    if (!online) showToast('Hors-ligne — données en cache', 'offline', 5000)
+    else if (online && isSupabaseReady) showToast('Connecté', 'success', 2000)
   }, [online])
 
   useEffect(() => {
-    if (realtimeFlash?.by) showToast(`✏️ Mis à jour par ${realtimeFlash.by}`, 'warning')
+    if (realtimeFlash?.by) showToast(`Mis à jour par ${realtimeFlash.by}`, 'warning')
   }, [realtimeFlash])
 
   const visible = filter === ALL_FILTER ? steps : steps.filter((s) => s.categorie === filter)
@@ -204,10 +235,10 @@ export default function App() {
     if (window.innerWidth < 700) setSidebarOpen(false)
   }
 
-  function handleAdd(step)        { addStep(step);           showToast('✅ Étape ajoutée', 'success') }
-  function handleUpdate(id, ch)   { updateStep(id, ch);      showToast('✅ Étape modifiée', 'success') }
-  function handleDelete(id)       { deleteStep(id);          showToast('🗑 Étape supprimée', 'info') }
-  function handleUndo()           { undo();                  showToast('↩ Action annulée', 'warning') }
+  function handleAdd(step)        { addStep(step);           showToast('Étape ajoutée', 'success') }
+  function handleUpdate(id, ch)   { updateStep(id, ch);      showToast('Étape modifiée', 'success') }
+  function handleDelete(id)       { deleteStep(id);          showToast('Étape supprimée', 'info') }
+  function handleUndo()           { undo();                  showToast('Action annulée', 'warning') }
 
   async function handleCreateItin() {
     const copy = window.confirm('Copier les étapes actuelles dans le nouvel itinéraire ?\n\n(Annuler = démarrer vide)')
@@ -215,14 +246,14 @@ export default function App() {
     if (!result) { showToast('Maximum 5 itinéraires', 'info'); return }
     if (copy && result.id) await copyStepsTo(result.id)
     setSelectedId(null); setPopupStep(null)
-    showToast(`✅ ${copy ? 'Itinéraire dupliqué' : 'Nouvel itinéraire créé'}`, 'success')
+    showToast(copy ? 'Itinéraire dupliqué' : 'Nouvel itinéraire créé', 'success')
   }
 
   async function handleDeleteItin(id) {
     if (!window.confirm('Supprimer cet itinéraire et toutes ses étapes ?')) return
     await deleteItinerarySteps(id)
     removeItin(id)
-    showToast('🗑 Itinéraire supprimé', 'info')
+    showToast('Itinéraire supprimé', 'info')
   }
 
   if (!authed) return <PinGate onAuth={onAuth} />
@@ -231,24 +262,29 @@ export default function App() {
 
   // Actions secondaires regroupées derrière "Plus" (desktop + mobile)
   const moreItems = [
-    { icon: '🏙️', label: 'Bangkok BTS/MRT', onClick: () => { flyBangkok(); setShowTransit(true) } },
-    { icon: '〰️', label: 'Trajet', toggle: true, active: showRoute, onClick: () => setShowRoute(v => !v) },
-    { icon: '🚇', label: 'Métro Bangkok', toggle: true, active: showTransit, onClick: () => setShowTransit(v => !v) },
-    { icon: '🗺️', label: 'Villes', onClick: () => setShowCityMenu(true) },
-    { icon: '🔗', label: 'Outils utiles', onClick: () => setShowTools(true) },
+    { icon: <CityIcon size={17} />, label: 'Bangkok BTS/MRT', onClick: () => { flyBangkok(); setShowTransit(true) } },
+    { icon: <RouteIcon size={17} />, label: 'Trajet', toggle: true, active: showRoute, onClick: () => setShowRoute(v => !v) },
+    { icon: <MetroIcon size={17} />, label: 'Métro Bangkok', toggle: true, active: showTransit, onClick: () => setShowTransit(v => !v) },
+    { icon: <MapIcon size={17} />, label: 'Villes', onClick: () => setShowCityMenu(true) },
+    { icon: <LinkIcon size={17} />, label: 'Outils utiles', onClick: () => setShowTools(true) },
     {
-      icon: '🌙', label: 'Carte sombre', toggle: true, active: darkMap,
-      onClick: () => setDarkMap(v => { localStorage.setItem('th_dark_map', v ? '0' : '1'); return !v }),
+      // Sélecteur 3 états — les trois styles visibles d'un coup d'œil
+      custom: (
+        <MapStyleSelector
+          value={mapStyle}
+          onChange={(next) => { localStorage.setItem('th_map_style', next); setMapStyle(next) }}
+        />
+      ),
     },
     {
-      icon: '💾', label: 'Exporter la sauvegarde',
+      icon: <DownloadIcon size={17} />, label: 'Exporter la sauvegarde',
       onClick: () => {
         const n = exportBackup()
-        showToast(`💾 Sauvegarde exportée (${n} éléments)`, 'success')
+        showToast(`Sauvegarde exportée (${n} éléments)`, 'success')
       },
     },
     {
-      icon: '📥', label: 'Importer une sauvegarde',
+      icon: <UploadIcon size={17} />, label: 'Importer une sauvegarde',
       onClick: () => document.getElementById('backup-file-input')?.click(),
     },
   ]
@@ -268,21 +304,21 @@ export default function App() {
         maxWidth: isMobile ? '85vw' : 300,
         transition: 'width 0.28s cubic-bezier(.4,0,.2,1)',
         overflow: 'hidden',
-        background: '#fff',
-        borderRight: '1px solid #e5e7eb',
+        background: '#0d1f3c',
+        borderRight: '1px solid rgba(255,255,255,0.07)',
         display: 'flex', flexDirection: 'column',
         zIndex: isMobile ? 210 : 100, flexShrink: 0,
-        boxShadow: isMobile && sidebarOpen ? '4px 0 24px rgba(0,0,0,0.18)' : 'none',
+        boxShadow: isMobile && sidebarOpen ? '4px 0 24px rgba(0,0,0,0.5)' : 'none',
       }}>
-        <div style={{ padding: '10px 14px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span style={{ fontSize: 12, color: '#6b7280' }}>
-            {user === 'Jordan' ? '👨‍✈️' : '👩‍✈️'} <strong>{user}</strong>
+        <div style={{ padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#0e3468' }}>
+          <span style={{ fontSize: 12, color: '#8fa8c4' }}>
+            <Avatar name={user} size={20} style={{ verticalAlign: -5, marginRight: 6 }} /><strong style={{ color: '#e8f4fd' }}>{user}</strong>
           </span>
           <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <span style={{ width: 7, height: 7, borderRadius: '50%', background: online ? '#22c55e' : '#9ca3af', display: 'inline-block' }} />
-            <span style={{ fontSize: 11, color: '#9ca3af' }}>{online ? 'en ligne' : 'hors-ligne'}</span>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: online ? '#4ade80' : '#8fa8c4', display: 'inline-block' }} />
+            <span style={{ fontSize: 11, color: '#8fa8c4' }}>{online ? 'en ligne' : 'hors-ligne'}</span>
             {isMobile && (
-              <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#9ca3af', padding: '0 4px' }}>✕</button>
+              <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#8fa8c4', padding: '0 4px' }}><CloseIcon size={16} /></button>
             )}
           </div>
         </div>
@@ -320,10 +356,10 @@ export default function App() {
           <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 500 }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <MapBtn onClick={() => setSidebarOpen(v => !v)} title={sidebarOpen ? 'Masquer le panneau' : 'Afficher le panneau'}>{sidebarOpen ? '◀' : '▶'}</MapBtn>
-              <MapBtn label="Recentrer" onClick={() => setFitTrigger(n => n + 1)}>🎯</MapBtn>
-              <MapBtn label="Hôtels" onClick={() => setShowHotels(true)}>🏨</MapBtn>
-              <MapBtn label="Budget" onClick={() => setShowBudget(true)}>💰</MapBtn>
-              <MapBtn label="Plus" active={showMore} onClick={() => setShowMore(v => !v)}>⋯</MapBtn>
+              <MapBtn label="Recentrer" onClick={() => setFitTrigger(n => n + 1)}><TargetIcon size={16} /></MapBtn>
+              <MapBtn label="Hôtels" onClick={() => setShowHotels(true)}><BedIcon size={16} /></MapBtn>
+              <MapBtn label="Budget" onClick={() => setShowBudget(true)}><WalletIcon size={16} /></MapBtn>
+              <MapBtn label="Plus" active={showMore} onClick={() => setShowMore(v => !v)}><DotsIcon size={16} /></MapBtn>
             </div>
             {showMore && (
               <MoreMenu
@@ -339,12 +375,12 @@ export default function App() {
         {isMobile && (
           <div style={{
             position: 'absolute', top: 0, left: 0, right: 0, zIndex: 500,
-            background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(10px)',
-            borderBottom: '1px solid #e5e7eb',
+            background: 'rgba(13,31,60,0.95)', backdropFilter: 'blur(10px)',
+            borderBottom: '1px solid rgba(255,255,255,0.07)',
             display: 'flex', alignItems: 'center', padding: '10px 12px', gap: 10,
           }}>
-            <button onClick={() => setSidebarOpen(v => !v)} style={mobileTopBtn}>☰</button>
-            <div style={{ flex: 1, textAlign: 'center', fontWeight: 700, fontSize: 13, color: '#111827' }}>
+            <button onClick={() => setSidebarOpen(v => !v)} style={mobileTopBtn}><MenuIcon size={18} /></button>
+            <div style={{ flex: 1, textAlign: 'center', fontWeight: 700, fontSize: 13, color: '#e8f4fd' }}>
               🇹🇭 Thaïlande · Août 2026
             </div>
             <div style={{ width: 44, display: 'flex', justifyContent: 'flex-end' }}>
@@ -366,11 +402,12 @@ export default function App() {
         {/* ── Desktop title badge (centré) ── */}
         {!isMobile && (
           <div style={{
-            position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
-            zIndex: 490, background: 'rgba(255,255,255,0.96)', backdropFilter: 'blur(8px)',
+            position: 'absolute', top: 12, right: 12,
+            zIndex: 480, background: 'rgba(13,31,60,0.94)', backdropFilter: 'blur(8px)',
             borderRadius: 22, padding: '8px 18px',
-            boxShadow: '0 2px 14px rgba(0,0,0,0.12)',
-            fontWeight: 700, fontSize: 14, color: '#111827', whiteSpace: 'nowrap',
+            border: '1px solid rgba(56,189,248,0.15)',
+            boxShadow: '0 2px 14px rgba(0,0,0,0.35)',
+            fontWeight: 700, fontSize: 14, color: '#e8f4fd', whiteSpace: 'nowrap',
             display: 'flex', alignItems: 'center', gap: 8,
           }}>
             🇹🇭 Thaïlande · Août 2026
@@ -389,11 +426,11 @@ export default function App() {
           <div style={{
             display: 'flex', flexDirection: 'column', height: '100%',
             alignItems: 'center', justifyContent: 'center', gap: 14,
-            background: 'linear-gradient(160deg, #eef2ff 0%, #e8f1f4 100%)',
+            background: 'linear-gradient(160deg, #0d1f3c 0%, #0a2a52 100%)',
           }}>
             <div style={{ fontSize: 44 }}>🇹🇭</div>
-            <div style={{ fontWeight: 800, fontSize: 17, color: '#111827' }}>Thaïlande · Août 2026</div>
-            <div style={{ fontSize: 20, color: '#6366f1', animation: 'spin 0.9s linear infinite' }}>◌</div>
+            <div style={{ fontWeight: 800, fontSize: 17, color: '#e8f4fd' }}>Thaïlande · Août 2026</div>
+            <Spinner size={22} style={{ color: '#38bdf8' }} />
           </div>
         ) : (
           <MapContainer
@@ -406,15 +443,29 @@ export default function App() {
             wheelPxPerZoomLevel={80}
             preferCanvas={true}
           >
-            <TileLayer
-              key={darkMap ? 'dark' : 'light'}
-              attribution='<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap</a>'
-              url={`https://api.maptiler.com/maps/${darkMap ? 'streets-v2-dark' : 'streets-v2'}/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
-              maxZoom={20}
-              tileSize={256}
-            />
+            {mapStyle === 'satellite' ? (
+              <TileLayer
+                key="satellite"
+                attribution='<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap</a>'
+                url={`https://api.maptiler.com/maps/hybrid/{z}/{x}/{y}.jpg?key=${import.meta.env.VITE_MAPTILER_KEY}`}
+                maxZoom={19}
+                tileSize={512}
+                zoomOffset={-1}
+              />
+            ) : (
+              <TileLayer
+                key={mapStyle}
+                attribution='<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap</a>'
+                url={`https://api.maptiler.com/maps/${mapStyle === 'dark' ? '019f8656-f0dd-7192-9db3-2f9435c134e8' : '019f8657-e8bc-7c21-9f71-8034cab3c3bc'}/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
+                maxZoom={20}
+                tileSize={512}
+                zoomOffset={-1}
+              />
+            )}
             {showTransit && <MetroLayer visibleLines={visibleLines} />}
             <SmoothWheelZoom />
+            <ScaleControl />
+            <ZoomWatcher onZoom={setMapZoom} />
             <ZoomControls isMobile={isMobile} />
             {showRoute && <RoutePolyline steps={visible} getSegment={getSegment} />}
             {visible.map((step) => (
@@ -423,6 +474,8 @@ export default function App() {
                 step={step}
                 selected={selectedId === step.id}
                 flash={realtimeFlash?.id === step.id}
+                compact={mapZoom < 7.2 && selectedId !== step.id}
+                hotelName={getSelectedHotel(step.id)?.name || null}
                 onClick={() => handleMarkerClick(step)}
               />
             ))}
@@ -447,16 +500,16 @@ export default function App() {
         {/* ── MOBILE bottom action bar ── */}
         {isMobile && (
           <div style={{
-            position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 500,
-            background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(10px)',
-            borderTop: '1px solid #e5e7eb',
+            position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1100,
+            background: 'rgba(13,31,60,0.95)', backdropFilter: 'blur(10px)',
+            borderTop: '1px solid rgba(255,255,255,0.07)',
             display: 'flex', alignItems: 'center', justifyContent: 'space-around',
             padding: '6px 4px calc(8px + env(safe-area-inset-bottom))',
           }}>
-            <BottomBtn onClick={() => setFitTrigger(n => n + 1)} label="Recentrer">🎯</BottomBtn>
-            <BottomBtn onClick={() => setShowHotels(true)} label="Hôtels">🏨</BottomBtn>
-            <BottomBtn onClick={() => setShowBudget(true)} label="Budget">💰</BottomBtn>
-            <BottomBtn onClick={() => setShowMore(v => !v)} label="Plus" active={showMore}>⋯</BottomBtn>
+            <BottomBtn onClick={() => setFitTrigger(n => n + 1)} label="Recentrer"><TargetIcon size={20} /></BottomBtn>
+            <BottomBtn onClick={() => setShowHotels(true)} label="Hôtels"><BedIcon size={20} /></BottomBtn>
+            <BottomBtn onClick={() => setShowBudget(true)} label="Budget"><WalletIcon size={20} /></BottomBtn>
+            <BottomBtn onClick={() => setShowMore(v => !v)} label="Plus" active={showMore}><DotsIcon size={20} /></BottomBtn>
           </div>
         )}
         {isMobile && showMore && (
@@ -497,7 +550,7 @@ export default function App() {
         {hotelCompare && (
           <HotelComparePanel
             steps={steps}
-            activeItin={activeItin || { id: activeItinId, name: 'Itinéraire', color: '#6366f1' }}
+            activeItin={activeItin || { id: activeItinId, name: 'Itinéraire', color: '#38bdf8' }}
             itineraries={itineraries}
             getAllStepsForCompare={getAllStepsForCompare}
             getHotels={getHotels}
@@ -526,10 +579,10 @@ export default function App() {
           if (!file) return
           try {
             const n = await importBackup(file)
-            showToast(`📥 ${n} éléments restaurés — rechargement…`, 'success')
+            showToast(`${n} éléments restaurés — rechargement…`, 'success')
             setTimeout(() => window.location.reload(), 1200)
           } catch (err) {
-            showToast(`⚠️ ${err.message}`, 'warning', 4000)
+            showToast(err.message, 'warning', 4000)
           }
         }}
       />
@@ -540,8 +593,8 @@ export default function App() {
         @keyframes slideUp { from { opacity:0; transform:translateY(20px) } to { opacity:1; transform:translateY(0) } }
         * { box-sizing:border-box; margin:0; padding:0; }
         ::-webkit-scrollbar { width:4px; }
-        ::-webkit-scrollbar-thumb { background:#d1d5db; border-radius:4px; }
-        .leaflet-container { background:#e8f1f4; }
+        ::-webkit-scrollbar-thumb { background:rgba(56,189,248,0.35); border-radius:4px; }
+        .leaflet-container { background:#12141a; }
       `}</style>
     </div>
   )
@@ -559,10 +612,11 @@ function CityMenu({ steps, isMobile, onClose, onSelect }) {
         top: isMobile ? 58 : 12,
         right: 12,
         zIndex: 500,
-        background: 'rgba(255,255,255,0.97)',
+        background: 'rgba(10,42,82,0.97)',
         backdropFilter: 'blur(12px)',
         borderRadius: 16,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+        border: '1px solid rgba(56,189,248,0.15)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
         padding: '10px 8px',
         minWidth: 200,
         maxWidth: 240,
@@ -570,28 +624,28 @@ function CityMenu({ steps, isMobile, onClose, onSelect }) {
         overflowY: 'auto',
         animation: 'slideUp 0.18s ease',
       }}>
-        <div style={{ fontWeight: 700, fontSize: 12, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1, padding: '2px 8px 8px' }}>
+        <div style={{ fontWeight: 700, fontSize: 12, color: '#8fa8c4', textTransform: 'uppercase', letterSpacing: 1, padding: '2px 8px 8px' }}>
           Destinations
         </div>
         {unique.map(step => {
-          const cat = CATEGORIES[step.categorie] || { emoji: '📍', color: '#6b7280' }
+          const cat = CATEGORIES[step.categorie] || { color: '#8fa8c4' }
           return (
             <button key={step.id} onClick={() => onSelect(step)} style={{
               display: 'flex', alignItems: 'center', gap: 10,
               width: '100%', textAlign: 'left',
               background: 'none', border: 'none', borderRadius: 10,
-              padding: '10px 12px', cursor: 'pointer', fontSize: 13, color: '#111827',
+              padding: '10px 12px', cursor: 'pointer', fontSize: 13, color: '#e8f4fd',
               borderLeft: `3px solid ${cat.color}`,
               marginBottom: 4,
               transition: 'background 0.1s',
             }}
-              onMouseEnter={e => e.currentTarget.style.background = '#f3f4f6'}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(56,189,248,0.08)'}
               onMouseLeave={e => e.currentTarget.style.background = 'none'}
             >
-              <span style={{ fontSize: 18 }}>{cat.emoji}</span>
+              <CategoryIcon category={step.categorie} size={18} color={cat.color} />
               <div>
                 <div style={{ fontWeight: 600 }}>{step.nom}</div>
-                <div style={{ fontSize: 11, color: '#9ca3af' }}>{step.dates}</div>
+                <div style={{ fontSize: 11, color: '#8fa8c4' }}>{step.dates}</div>
               </div>
             </button>
           )
@@ -606,11 +660,11 @@ function BottomBtn({ onClick, label, active, children }) {
   return (
     <button onClick={onClick} style={{
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
-      background: active ? '#eef2ff' : 'none', border: 'none', cursor: 'pointer',
+      background: active ? 'rgba(56,189,248,0.12)' : 'none', border: 'none', cursor: 'pointer',
       padding: '4px 10px', borderRadius: 12, minWidth: 60, minHeight: 48, flex: 1, maxWidth: 96,
     }}>
-      <span style={{ fontSize: 22, lineHeight: 1 }}>{children}</span>
-      <span style={{ fontSize: 10, color: active ? '#6366f1' : '#6b7280', fontWeight: active ? 700 : 500 }}>{label}</span>
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 22, color: active ? '#38bdf8' : '#8fa8c4' }}>{children}</span>
+      <span style={{ fontSize: 10, color: active ? '#38bdf8' : '#8fa8c4', fontWeight: active ? 700 : 500 }}>{label}</span>
     </button>
   )
 }
@@ -618,34 +672,73 @@ function BottomBtn({ onClick, label, active, children }) {
 function OfflinePill() {
   return (
     <span style={{
-      fontSize: 10, background: '#374151', color: '#f9fafb', borderRadius: 8,
+      fontSize: 10, background: 'rgba(255,255,255,0.1)', color: '#e8f4fd', borderRadius: 8,
       padding: '3px 8px', fontWeight: 600, whiteSpace: 'nowrap',
-    }}>📡 hors-ligne</span>
+    }} ><svg width="11" height="11" viewBox="0 0 20 20" stroke="currentColor" strokeWidth="1.8" fill="none" strokeLinecap="round" style={{ verticalAlign: -1.5, marginRight: 4 }}><path d="M3 3l14 14M6.5 8.6a8.5 8.5 0 0 1 2-1.2M2.5 6.5a12 12 0 0 1 3-2M10.6 5.1a12 12 0 0 1 6.9 3.4M9.5 9.2a8.5 8.5 0 0 1 4 2.3M7.2 12.2a5 5 0 0 1 2.8-1.4"/><circle cx="10" cy="15.5" r="1.2" fill="currentColor" stroke="none"/></svg>hors-ligne</span>
+  )
+}
+
+// Sélecteur de style de carte — 3 états visibles, l'actif en aqua
+function MapStyleSelector({ value, onChange }) {
+  const options = [
+    { key: 'light', label: 'Clair', icon: <SunIcon size={15} /> },
+    { key: 'dark', label: 'Sombre', icon: <MoonIcon size={15} /> },
+    { key: 'satellite', label: 'Satellite', icon: <SatelliteIcon size={15} /> },
+  ]
+  return (
+    <div style={{ padding: '6px 12px 8px' }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: '#8fa8c4', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>
+        Style de carte
+      </div>
+      <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: 3 }}>
+        {options.map(o => {
+          const active = value === o.key
+          return (
+            <button
+              key={o.key}
+              onClick={() => onChange(o.key)}
+              style={{
+                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+                background: active ? 'rgba(56,189,248,0.18)' : 'none',
+                border: active ? '1px solid rgba(56,189,248,0.5)' : '1px solid transparent',
+                borderRadius: 8, padding: '7px 4px', minHeight: 44, cursor: 'pointer',
+                color: active ? '#38bdf8' : '#8fa8c4',
+              }}
+            >
+              {o.icon}
+              <span style={{ fontSize: 10.5, fontWeight: active ? 700 : 500 }}>{o.label}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
 // Menu "Plus" — dropdown sur desktop, bottom sheet sur mobile
 function MoreMenu({ isMobile, items, onClose }) {
-  const row = (item) => (
+  const row = (item, i) => item.custom ? (
+    <div key={`custom-${i}`}>{item.custom}</div>
+  ) : (
     <button
       key={item.label}
       onClick={() => { item.onClick(); if (!item.toggle) onClose() }}
       style={{
         display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-        background: item.active ? '#eef2ff' : 'none', border: 'none',
+        background: item.active ? 'rgba(56,189,248,0.12)' : 'none', border: 'none',
         borderRadius: 10, padding: isMobile ? '12px 14px' : '9px 12px',
         minHeight: isMobile ? 48 : 38, cursor: 'pointer', textAlign: 'left',
       }}
     >
-      <span style={{ fontSize: 17 }}>{item.icon}</span>
-      <span style={{ fontSize: 13, fontWeight: 600, color: item.active ? '#6366f1' : '#374151', flex: 1 }}>
+      <span style={{ display: 'flex', alignItems: 'center', color: item.active ? '#38bdf8' : '#8fa8c4' }}>{item.icon}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: item.active ? '#38bdf8' : '#e8f4fd', flex: 1 }}>
         {item.label}
       </span>
       {item.toggle && (
         <span style={{
           fontSize: 10, fontWeight: 700, borderRadius: 6, padding: '2px 8px',
-          background: item.active ? '#6366f1' : '#f3f4f6',
-          color: item.active ? '#fff' : '#9ca3af',
+          background: item.active ? '#38bdf8' : 'rgba(255,255,255,0.08)',
+          color: item.active ? '#0d1f3c' : '#8fa8c4',
         }}>{item.active ? 'ON' : 'OFF'}</span>
       )}
     </button>
@@ -654,14 +747,15 @@ function MoreMenu({ isMobile, items, onClose }) {
   if (isMobile) {
     return (
       <>
-        <div onClick={onClose} style={{ position: 'absolute', inset: 0, zIndex: 505, background: 'rgba(0,0,0,0.25)' }} />
+        <div onClick={onClose} style={{ position: 'absolute', inset: 0, zIndex: 1105, background: 'rgba(0,0,0,0.35)' }} />
         <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 510,
-          background: '#fff', borderRadius: '18px 18px 0 0',
+          position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 1110,
+          background: '#0a2a52', borderRadius: '18px 18px 0 0',
+          border: '1px solid rgba(56,189,248,0.15)', borderBottom: 'none',
           padding: '10px 10px calc(14px + env(safe-area-inset-bottom))',
-          boxShadow: '0 -8px 32px rgba(0,0,0,0.2)',
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.5)',
         }}>
-          <div style={{ width: 36, height: 4, borderRadius: 2, background: '#e5e7eb', margin: '0 auto 8px' }} />
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: 'rgba(255,255,255,0.15)', margin: '0 auto 8px' }} />
           {items.map(row)}
         </div>
       </>
@@ -672,8 +766,8 @@ function MoreMenu({ isMobile, items, onClose }) {
       <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 505 }} />
       <div style={{
         position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 510,
-        background: '#fff', borderRadius: 12, padding: 6, minWidth: 200,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.18)', border: '1px solid #f3f4f6',
+        background: '#0a2a52', borderRadius: 12, padding: 6, minWidth: 200,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)', border: '1px solid rgba(56,189,248,0.15)',
       }}>
         {items.map(row)}
       </div>
@@ -682,8 +776,8 @@ function MoreMenu({ isMobile, items, onClose }) {
 }
 
 const mobileTopBtn = {
-  background: '#f3f4f6', border: 'none', borderRadius: 10,
-  width: 38, height: 38, fontSize: 18, cursor: 'pointer',
+  background: 'rgba(56,189,248,0.12)', border: 'none', borderRadius: 10,
+  width: 38, height: 38, fontSize: 18, cursor: 'pointer', color: '#e8f4fd',
   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
 }
 
@@ -693,17 +787,17 @@ function MapBtn({ onClick, title, label, active, children }) {
       onClick={onClick}
       title={title || label}
       style={{
-        background: active ? '#eef2ff' : '#fff',
-        border: active ? '1px solid #c7d2fe' : '1px solid #e5e7eb',
+        background: active ? 'rgba(56,189,248,0.18)' : '#0e3468',
+        border: active ? '1px solid rgba(56,189,248,0.5)' : '1px solid rgba(56,189,248,0.2)',
         borderRadius: 10, padding: label ? '8px 13px' : '8px 11px',
-        cursor: 'pointer', fontSize: 17, lineHeight: 1,
-        boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
+        cursor: 'pointer', fontSize: 17, lineHeight: 1, color: '#e8f4fd',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
         display: 'flex', alignItems: 'center', gap: 7,
       }}
     >
       {children}
       {label && (
-        <span style={{ fontSize: 13, fontWeight: 600, color: active ? '#6366f1' : '#374151' }}>{label}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: active ? '#38bdf8' : '#e8f4fd' }}>{label}</span>
       )}
     </button>
   )

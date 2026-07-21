@@ -1,9 +1,11 @@
+// Catégories d'étapes — DA Coastal Indigo.
+// `emoji` conservé en fallback texte (exports, tooltips simples) ; l'UI utilise <CategoryIcon>.
 export const CATEGORIES = {
-  ville:           { label: 'Ville',          color: '#3b82f6', emoji: '🏙️' },
-  île:             { label: 'Île',             color: '#06b6d4', emoji: '🏝️' },
-  'parc national': { label: 'Parc national',   color: '#22c55e', emoji: '🌿' },
-  excursion:       { label: 'Excursion',        color: '#f59e0b', emoji: '⛵' },
-  transit:         { label: 'Transit',          color: '#8b5cf6', emoji: '✈️' },
+  ville:           { label: 'Ville',          color: '#38bdf8', emoji: '🏙️' },
+  île:             { label: 'Île',             color: '#4ade80', emoji: '🏝️' },
+  'parc national': { label: 'Parc national',   color: '#86efac', emoji: '🌿' },
+  excursion:       { label: 'Excursion',        color: '#fbbf24', emoji: '⛵' },
+  transit:         { label: 'Transit',          color: '#a78bfa', emoji: '✈️' },
 }
 
 export const ALL_FILTER = 'tous'

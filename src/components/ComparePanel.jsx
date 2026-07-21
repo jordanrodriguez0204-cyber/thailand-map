@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
 import { haversineKm } from '../utils/geo'
 import { CATEGORIES } from '../constants'
+import { CategoryIcon, CloseIcon, TransportIcon } from './icons'
 import { TRANSPORT_MODES, estimateDuration, formatDuration } from '../data/destinations'
 
 function loadItinData(itinId, getAllStepsForCompare) {
@@ -38,21 +39,21 @@ function loadItinData(itinId, getAllStepsForCompare) {
 }
 
 function StepCard({ step, color }) {
-  const cat = CATEGORIES[step.categorie] || { emoji: '📍', color: '#6b7280' }
+  const cat = CATEGORIES[step.categorie] || { color: '#8fa8c4' }
   return (
     <div style={{
-      background: '#fff', border: `1px solid ${color}30`,
+      background: '#0a2a52', border: `1px solid ${color}30`,
       borderLeft: `3px solid ${color}`, borderRadius: 10,
       padding: '9px 11px',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontSize: 16 }}>{cat.emoji}</span>
+        <CategoryIcon category={step.categorie} size={15} color={cat.color} />
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#e8f4fd', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {step.nom}
           </div>
           {step.dates && (
-            <div style={{ fontSize: 11.5, color: '#6b7280' }}>{step.dates}</div>
+            <div style={{ fontSize: 11.5, color: '#8fa8c4' }}>{step.dates}</div>
           )}
         </div>
       </div>
@@ -67,34 +68,34 @@ function SegmentRow({ seg, color }) {
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       padding: '5px 0', gap: 3,
     }}>
-      <div style={{ width: 1, height: 6, background: '#e5e7eb' }} />
+      <div style={{ width: 1, height: 6, background: 'rgba(56,189,248,0.15)' }} />
       <div style={{
         background: tm.color + '15', borderRadius: 20,
         padding: '3px 10px', display: 'flex', alignItems: 'center', gap: 5,
       }}>
-        <span style={{ fontSize: 13 }}>{tm.icon}</span>
+        <TransportIcon mode={seg.mode} size={13} style={{ color: tm.color }} />
         <span style={{ fontSize: 10, fontWeight: 600, color: tm.color }}>
           {seg.km} km
         </span>
-        <span style={{ fontSize: 11, color: '#6b7280' }}>·</span>
-        <span style={{ fontSize: 10, fontWeight: 600, color: '#374151' }}>
+        <span style={{ fontSize: 11, color: '#8fa8c4' }}>·</span>
+        <span style={{ fontSize: 10, fontWeight: 600, color: '#cfe2f5' }}>
           {formatDuration(seg.dur)}
         </span>
         {seg.price > 0 && (
           <>
-            <span style={{ fontSize: 11, color: '#6b7280' }}>·</span>
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a' }}>
+            <span style={{ fontSize: 11, color: '#8fa8c4' }}>·</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#4ade80' }}>
               {seg.price} CHF
             </span>
           </>
         )}
       </div>
       {seg.notes && (
-        <div style={{ fontSize: 10.5, color: '#9ca3af', fontStyle: 'italic', textAlign: 'center', maxWidth: 120 }}>
+        <div style={{ fontSize: 10.5, color: '#8fa8c4', fontStyle: 'italic', textAlign: 'center', maxWidth: 120 }}>
           {seg.notes}
         </div>
       )}
-      <div style={{ width: 1, height: 6, background: '#e5e7eb' }} />
+      <div style={{ width: 1, height: 6, background: 'rgba(56,189,248,0.15)' }} />
     </div>
   )
 }
@@ -107,7 +108,7 @@ function ItinColumn({ itin, data }) {
       display: 'flex', flexDirection: 'column', gap: 0,
     }}>
       {steps.length === 0 && (
-        <div style={{ textAlign: 'center', color: '#d1d5db', fontSize: 12, padding: '20px 0' }}>
+        <div style={{ textAlign: 'center', color: '#8fa8c4', fontSize: 12, padding: '20px 0' }}>
           Aucune étape
         </div>
       )}
@@ -129,7 +130,7 @@ function StatRow({ label, values, itineraries, higherIsBetter = false }) {
 
   return (
     <tr>
-      <td style={{ padding: '7px 10px', fontSize: 11.5, color: '#6b7280', fontWeight: 500, whiteSpace: 'nowrap' }}>
+      <td style={{ padding: '7px 10px', fontSize: 11.5, color: '#8fa8c4', fontWeight: 500, whiteSpace: 'nowrap' }}>
         {label}
       </td>
       {values.map((v, i) => {
@@ -138,7 +139,7 @@ function StatRow({ label, values, itineraries, higherIsBetter = false }) {
         return (
           <td key={i} style={{
             padding: '7px 10px', fontSize: 12, fontWeight: 700, textAlign: 'center',
-            color: isWinner ? itineraries[i].color : '#111827',
+            color: isWinner ? itineraries[i].color : '#e8f4fd',
             background: isWinner ? itineraries[i].color + '10' : 'transparent',
           }}>
             {v}
@@ -157,17 +158,17 @@ function advantages(itineraries, datas) {
     const wins = []
 
     if (others.every(o => d.totalTransport + d.totalHotel < o.totalTransport + o.totalHotel))
-      wins.push('💶 Budget total le plus bas')
+      wins.push('Budget total le plus bas')
     if (others.every(o => d.totalKm < o.totalKm))
-      wins.push('🌍 Moins de kilomètres')
+      wins.push('Moins de kilomètres')
     if (others.every(o => d.totalDuration < o.totalDuration))
-      wins.push('⏱ Moins de temps en transit')
+      wins.push('Moins de temps en transit')
     if (others.every(o => d.steps.length > o.steps.length))
-      wins.push('📍 Plus de destinations')
+      wins.push('Plus de destinations')
     if (others.every(o => d.totalTransport < o.totalTransport))
-      wins.push('✈️ Transports moins chers')
+      wins.push('Transports moins chers')
     if (others.every(o => d.totalHotel < o.totalHotel))
-      wins.push('🏨 Hôtels moins chers')
+      wins.push('Hôtels moins chers')
 
     return { itin, wins }
   })
@@ -184,7 +185,7 @@ export function ComparePanel({ itineraries, getAllStepsForCompare, onClose }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12,
     }} onClick={onClose}>
       <div style={{
-        background: '#f8f9fb', borderRadius: 20, width: '100%', maxWidth: 760,
+        background: '#0d1f3c', borderRadius: 20, width: '100%', maxWidth: 760,
         maxHeight: '92vh', display: 'flex', flexDirection: 'column',
         boxShadow: '0 32px 80px rgba(0,0,0,0.35)',
         animation: 'modalIn 0.18s ease',
@@ -193,20 +194,20 @@ export function ComparePanel({ itineraries, getAllStepsForCompare, onClose }) {
         {/* Header */}
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          padding: '16px 20px', borderBottom: '1px solid #e5e7eb', flexShrink: 0,
-          background: '#fff', borderRadius: '20px 20px 0 0',
+          padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.09)', flexShrink: 0,
+          background: '#0a2a52', borderRadius: '20px 20px 0 0',
         }}>
           <div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: '#111827' }}>🔀 Comparaison des itinéraires</div>
-            <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: '#e8f4fd' }}>Comparaison des itinéraires</div>
+            <div style={{ fontSize: 11, color: '#8fa8c4', marginTop: 2 }}>
               {itineraries.map(i => i.name).join(' vs ')}
             </div>
           </div>
           <button onClick={onClose} style={{
-            background: '#f3f4f6', border: 'none', borderRadius: '50%',
-            width: 32, height: 32, cursor: 'pointer', fontSize: 18, color: '#6b7280',
+            background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '50%',
+            width: 32, height: 32, cursor: 'pointer', fontSize: 18, color: '#8fa8c4',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>×</button>
+          }}><CloseIcon size={15} /></button>
         </div>
 
         {/* Columns — scrollable */}
@@ -240,19 +241,19 @@ export function ComparePanel({ itineraries, getAllStepsForCompare, onClose }) {
 
         {/* Summary table + avantages */}
         <div style={{
-          flexShrink: 0, borderTop: '1px solid #e5e7eb',
-          background: '#fff', borderRadius: '0 0 20px 20px',
+          flexShrink: 0, borderTop: '1px solid rgba(255,255,255,0.09)',
+          background: '#0a2a52', borderRadius: '0 0 20px 20px',
           padding: '14px 16px',
         }}>
           {/* Stats table */}
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#8fa8c4', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>
             Récapitulatif
           </div>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #f3f4f6' }}>
-                  <th style={{ padding: '6px 10px', textAlign: 'left', fontSize: 11, color: '#9ca3af', fontWeight: 500 }}></th>
+                <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  <th style={{ padding: '6px 10px', textAlign: 'left', fontSize: 11, color: '#8fa8c4', fontWeight: 500 }}></th>
                   {itineraries.map(itin => (
                     <th key={itin.id} style={{
                       padding: '6px 10px', textAlign: 'center', fontSize: 12,
@@ -262,22 +263,22 @@ export function ComparePanel({ itineraries, getAllStepsForCompare, onClose }) {
                 </tr>
               </thead>
               <tbody>
-                <StatRow label="📍 Étapes"
+                <StatRow label="Étapes"
                   values={datas.map(d => d.steps.length)}
                   itineraries={itineraries} higherIsBetter={true} />
-                <StatRow label="🗺️ Distance totale"
+                <StatRow label="Distance totale"
                   values={datas.map(d => `${d.totalKm.toLocaleString()} km`)}
                   itineraries={itineraries} />
-                <StatRow label="⏱ Temps de trajet"
+                <StatRow label="Temps de trajet"
                   values={datas.map(d => formatDuration(d.totalDuration))}
                   itineraries={itineraries} />
-                <StatRow label="✈️ Budget transport"
+                <StatRow label="Budget transport"
                   values={datas.map(d => d.totalTransport > 0 ? `${d.totalTransport} CHF` : '—')}
                   itineraries={itineraries} />
-                <StatRow label="🏨 Budget hôtels"
+                <StatRow label="Budget hôtels"
                   values={datas.map(d => d.totalHotel > 0 ? `${d.totalHotel} CHF` : '—')}
                   itineraries={itineraries} />
-                <StatRow label="💶 Total budget"
+                <StatRow label="Total budget"
                   values={datas.map(d => {
                     const t = d.totalTransport + d.totalHotel
                     return t > 0 ? `${t.toLocaleString()} CHF` : '—'
@@ -300,7 +301,7 @@ export function ComparePanel({ itineraries, getAllStepsForCompare, onClose }) {
                     Avantages — {itin.name}
                   </div>
                   {wins.map((w, i) => (
-                    <div key={i} style={{ fontSize: 11, color: '#374151', marginBottom: 3 }}>{w}</div>
+                    <div key={i} style={{ fontSize: 11, color: '#cfe2f5', marginBottom: 3 }}>{w}</div>
                   ))}
                 </div>
               ))}

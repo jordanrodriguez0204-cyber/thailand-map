@@ -1,3 +1,4 @@
+import { WalletIcon, CloseIcon, TransportIcon } from './icons'
 import { haversineKm } from '../utils/geo'
 import { TRANSPORT_MODES, estimateDuration, formatDuration } from '../data/destinations'
 
@@ -32,14 +33,14 @@ export function BudgetPanel({ steps, getSegment, getHotel, onClose }) {
     <div style={overlay} onClick={onClose}>
       <div style={panel} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>💰 Budget du voyage</h2>
-          <button onClick={onClose} style={closeBtn}>×</button>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }} style={{ margin: 0, fontSize: 17, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}><WalletIcon size={18} style={{ color: '#38bdf8' }} />Budget du voyage</h2>
+          <button onClick={onClose} style={closeBtn}><CloseIcon size={15} /></button>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
-              <tr style={{ borderBottom: '2px solid #e5e7eb', color: '#6b7280', fontSize: 11, textTransform: 'uppercase' }}>
+              <tr style={{ borderBottom: '2px solid rgba(255,255,255,0.12)', color: '#8fa8c4', fontSize: 11, textTransform: 'uppercase' }}>
                 <th style={th}>Étape</th>
                 <th style={th}>Transport</th>
                 <th style={th}>Km</th>
@@ -54,19 +55,19 @@ export function BudgetPanel({ steps, getSegment, getHotel, onClose }) {
                 const tm = mode ? TRANSPORT_MODES[mode] : null
                 const rowTotal = hotelTotal + (i > 0 ? transportPrice : 0)
                 return (
-                  <tr key={step.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                  <tr key={step.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                     <td style={td}>
                       <div style={{ fontWeight: 600 }}>{step.nom}</div>
-                      {hotel.name && <div style={{ fontSize: 11, color: '#9ca3af' }}>{hotel.name}{hotel.nights ? ` · ${hotel.nights}n` : ''}</div>}
+                      {hotel.name && <div style={{ fontSize: 11, color: '#8fa8c4' }}>{hotel.name}{hotel.nights ? ` · ${hotel.nights}n` : ''}</div>}
                     </td>
                     <td style={{ ...td, textAlign: 'center' }}>
-                      {tm ? <span title={tm.label}>{tm.icon}</span> : '—'}
+                      {tm ? <span title={tm.label} style={{ display: 'inline-flex', color: tm.color }}><TransportIcon mode={mode} size={14} /></span> : '—'}
                     </td>
-                    <td style={{ ...td, textAlign: 'right', color: '#6b7280' }}>{i > 0 ? km : '—'}</td>
-                    <td style={{ ...td, textAlign: 'right', color: '#6b7280' }}>{i > 0 ? formatDuration(durMin) : '—'}</td>
+                    <td style={{ ...td, textAlign: 'right', color: '#8fa8c4' }}>{i > 0 ? km : '—'}</td>
+                    <td style={{ ...td, textAlign: 'right', color: '#8fa8c4' }}>{i > 0 ? formatDuration(durMin) : '—'}</td>
                     <td style={{ ...td, textAlign: 'right' }}>{i > 0 && transportPrice > 0 ? `${transportPrice} CHF` : '—'}</td>
                     <td style={{ ...td, textAlign: 'right' }}>{hotelTotal > 0 ? `${hotelTotal} CHF` : '—'}</td>
-                    <td style={{ ...td, textAlign: 'right', fontWeight: 600, color: rowTotal > 0 ? '#111827' : '#d1d5db' }}>
+                    <td style={{ ...td, textAlign: 'right', fontWeight: 600, color: rowTotal > 0 ? '#e8f4fd' : '#8fa8c4' }}>
                       {rowTotal > 0 ? `${rowTotal} CHF` : '—'}
                     </td>
                   </tr>
@@ -74,14 +75,14 @@ export function BudgetPanel({ steps, getSegment, getHotel, onClose }) {
               })}
             </tbody>
             <tfoot>
-              <tr style={{ borderTop: '2px solid #e5e7eb', background: '#f9fafb', fontWeight: 700 }}>
+              <tr style={{ borderTop: '2px solid rgba(255,255,255,0.12)', background: '#0e3468', fontWeight: 700 }}>
                 <td style={{ ...td, fontWeight: 700 }}>TOTAL</td>
                 <td style={td} />
                 <td style={{ ...td, textAlign: 'right' }}>{totalKm} km</td>
                 <td style={{ ...td, textAlign: 'right' }}>{formatDuration(totalDurMin)}</td>
-                <td style={{ ...td, textAlign: 'right', color: '#ef4444' }}>{totalTransport > 0 ? `${totalTransport} CHF` : '—'}</td>
-                <td style={{ ...td, textAlign: 'right', color: '#0891b2' }}>{totalHotel > 0 ? `${totalHotel} CHF` : '—'}</td>
-                <td style={{ ...td, textAlign: 'right', fontSize: 15, color: '#6366f1' }}>{grandTotal > 0 ? `${grandTotal} CHF` : '—'}</td>
+                <td style={{ ...td, textAlign: 'right', color: '#f87171' }}>{totalTransport > 0 ? `${totalTransport} CHF` : '—'}</td>
+                <td style={{ ...td, textAlign: 'right', color: '#7dd3fc' }}>{totalHotel > 0 ? `${totalHotel} CHF` : '—'}</td>
+                <td style={{ ...td, textAlign: 'right', fontSize: 15, color: '#38bdf8' }}>{grandTotal > 0 ? `${grandTotal} CHF` : '—'}</td>
               </tr>
             </tfoot>
           </table>
@@ -89,9 +90,9 @@ export function BudgetPanel({ steps, getSegment, getHotel, onClose }) {
 
         {grandTotal > 0 && (
           <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <StatCard label="Total transport" value={`${totalTransport} CHF`} color="#ef4444" />
-            <StatCard label="Total hébergement" value={`${totalHotel} CHF`} color="#0891b2" />
-            <StatCard label="Budget total" value={`${grandTotal} CHF`} color="#6366f1" bold />
+            <StatCard label="Total transport" value={`${totalTransport} CHF`} color="#f87171" />
+            <StatCard label="Total hébergement" value={`${totalHotel} CHF`} color="#7dd3fc" />
+            <StatCard label="Budget total" value={`${grandTotal} CHF`} color="#38bdf8" bold />
           </div>
         )}
       </div>
@@ -102,7 +103,7 @@ export function BudgetPanel({ steps, getSegment, getHotel, onClose }) {
 function StatCard({ label, value, color, bold }) {
   return (
     <div style={{ flex: 1, minWidth: 130, background: color + '11', borderRadius: 10, padding: '10px 14px', borderLeft: `3px solid ${color}` }}>
-      <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 11, color: '#8fa8c4', marginBottom: 2 }}>{label}</div>
       <div style={{ fontSize: bold ? 20 : 16, fontWeight: 700, color }}>{value}</div>
     </div>
   )
@@ -115,15 +116,15 @@ const overlay = {
   padding: 16,
 }
 const panel = {
-  background: '#fff', borderRadius: 18, padding: 24,
+  background: '#0a2a52', borderRadius: 18, padding: 24,
   maxWidth: 700, width: '100%',
   boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
   maxHeight: '90vh', overflowY: 'auto',
   animation: 'modalIn 0.18s ease',
 }
 const closeBtn = {
-  background: '#f3f4f6', border: 'none', width: 32, height: 32,
-  borderRadius: '50%', fontSize: 20, cursor: 'pointer', color: '#6b7280',
+  background: 'rgba(255,255,255,0.06)', border: 'none', width: 32, height: 32,
+  borderRadius: '50%', fontSize: 20, cursor: 'pointer', color: '#8fa8c4',
 }
 const th = { padding: '6px 8px', textAlign: 'left', fontWeight: 600 }
 const td = { padding: '8px 8px', verticalAlign: 'top' }

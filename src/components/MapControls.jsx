@@ -18,12 +18,12 @@ export function ZoomControls({ isMobile }) {
 function ZBtn({ onClick, title, children }) {
   return (
     <button onClick={onClick} title={title} style={{
-      width: 36, height: 36, background: '#fff',
-      border: '1px solid #e5e7eb', borderRadius: 10,
+      width: 36, height: 36, background: '#0e3468',
+      border: '1px solid rgba(56,189,248,0.2)', borderRadius: 10,
       fontSize: 20, fontWeight: 700, cursor: 'pointer',
-      boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.35)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      color: '#374151', lineHeight: 1,
+      color: '#e8f4fd', lineHeight: 1,
     }}>
       {children}
     </button>
@@ -50,14 +50,14 @@ export function CityShortcuts({ steps }) {
       maxHeight: 'calc(100vh - 80px)', overflowY: 'auto',
     }}>
       {unique.map(step => {
-        const cat = CATEGORIES[step.categorie] || { emoji: '📍', color: '#6b7280' }
+        const cat = CATEGORIES[step.categorie] || { color: '#8fa8c4' }
         return (
           <button
             key={step.id}
             onClick={() => map.flyTo([step.lat, step.lng], 13, { duration: 1.1 })}
             title={`Aller à ${step.nom}`}
             style={{
-              background: 'rgba(255,255,255,0.96)',
+              background: 'rgba(10,42,82,0.96)',
               backdropFilter: 'blur(8px)',
               border: `1px solid ${cat.color}44`,
               borderLeft: `3px solid ${cat.color}`,
@@ -66,7 +66,7 @@ export function CityShortcuts({ steps }) {
               cursor: 'pointer',
               fontSize: 12,
               fontWeight: 600,
-              color: '#111827',
+              color: '#e8f4fd',
               textAlign: 'left',
               whiteSpace: 'nowrap',
               boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
@@ -78,7 +78,7 @@ export function CityShortcuts({ steps }) {
               textOverflow: 'ellipsis',
             }}
           >
-            <span style={{ fontSize: 14 }}>{cat.emoji}</span>
+            
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{step.nom}</span>
           </button>
         )
