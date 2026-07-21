@@ -1,9 +1,9 @@
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import { Marker, Tooltip } from 'react-leaflet'
 import L from 'leaflet'
 import { CATEGORIES } from '../constants'
 
-export function StepMarker({ step, selected, flash, onClick }) {
+function StepMarkerInner({ step, selected, flash, onClick }) {
   const cat = CATEGORIES[step.categorie] || CATEGORIES.ville
   const icon = useMemo(() => {
     const size = selected ? 40 : 32
@@ -42,3 +42,15 @@ export function StepMarker({ step, selected, flash, onClick }) {
     </Marker>
   )
 }
+
+export const StepMarker = memo(StepMarkerInner, (prev, next) =>
+  prev.selected === next.selected &&
+  prev.flash === next.flash &&
+  prev.step.id === next.step.id &&
+  prev.step.ordre === next.step.ordre &&
+  prev.step.lat === next.step.lat &&
+  prev.step.lng === next.step.lng &&
+  prev.step.nom === next.step.nom &&
+  prev.step.dates === next.step.dates &&
+  prev.step.categorie === next.step.categorie
+)
