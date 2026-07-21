@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { cloudSave, cloudLoad, onCloudChange } from '../lib/cloudStore'
 
 function storageKey(itinId) { return `th_activities_${itinId}` }
 function loadFor(itinId) {
@@ -10,6 +11,24 @@ export function useActivities(itinId = 'default') {
 
   useEffect(() => { setActivities(loadFor(itinId)) }, [itinId])
 
+  // Sync cloud
+  useEffect(() => {
+    let stale = false
+    cloudLoad(storageKey(itinId)).then(remote => {
+      if (remote && !stale) {
+        localStorage.setItem(storageKey(itinId), JSON.stringify(remote))
+        setActivities(remote)
+      }
+    })
+    const off = onCloudChange((k, value) => {
+      if (k === storageKey(itinId)) {
+        localStorage.setItem(k, JSON.stringify(value))
+        setActivities(value)
+      }
+    })
+    return () => { stale = true; off() }
+  }, [itinId])
+
   const getActivities = useCallback((stepId) => activities[stepId] || [], [activities])
 
   const addActivity = useCallback((stepId, text) => {
@@ -17,6 +36,7 @@ export function useActivities(itinId = 'default') {
     setActivities(prev => {
       const next = { ...prev, [stepId]: [...(prev[stepId] || []), { id: Date.now(), text: text.trim(), done: false }] }
       localStorage.setItem(storageKey(itinId), JSON.stringify(next))
+      cloudSave(storageKey(itinId), next)
       return next
     })
   }, [itinId])
@@ -25,6 +45,7 @@ export function useActivities(itinId = 'default') {
     setActivities(prev => {
       const next = { ...prev, [stepId]: (prev[stepId] || []).map(a => a.id === actId ? { ...a, done: !a.done } : a) }
       localStorage.setItem(storageKey(itinId), JSON.stringify(next))
+      cloudSave(storageKey(itinId), next)
       return next
     })
   }, [itinId])
@@ -33,6 +54,7 @@ export function useActivities(itinId = 'default') {
     setActivities(prev => {
       const next = { ...prev, [stepId]: (prev[stepId] || []).filter(a => a.id !== actId) }
       localStorage.setItem(storageKey(itinId), JSON.stringify(next))
+      cloudSave(storageKey(itinId), next)
       return next
     })
   }, [itinId])

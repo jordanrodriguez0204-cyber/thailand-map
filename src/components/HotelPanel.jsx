@@ -51,7 +51,14 @@ export function HotelPanel({ steps, getHotels, onClose, onFly, onCompare }) {
                           borderRadius: 10, padding: '10px 12px',
                           borderLeft: `4px solid ${hotel.selected ? '#6366f1' : hasPin ? '#22c55e' : '#e5e7eb'}`,
                         }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                            {hotel.photo_url && (
+                              <img
+                                src={hotel.photo_url} alt={hotel.name} loading="lazy"
+                                onError={e => { e.target.style.display = 'none' }}
+                                style={{ width: 52, height: 52, objectFit: 'cover', borderRadius: 8, flexShrink: 0 }}
+                              />
+                            )}
                             <div style={{ flex: 1 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                                 <div style={{ fontWeight: 700, fontSize: 13.5, color: '#111827' }}>
@@ -59,6 +66,9 @@ export function HotelPanel({ steps, getHotels, onClose, onFly, onCompare }) {
                                 </div>
                                 {hotel.selected && (
                                   <span style={{ fontSize: 10, background: '#ede9fe', color: '#6366f1', borderRadius: 5, padding: '1px 6px', fontWeight: 700 }}>★ sélectionné</span>
+                                )}
+                                {hotel.rating != null && (
+                                  <span style={{ fontSize: 10, background: '#fbbf24', color: '#78350f', borderRadius: 5, padding: '1px 6px', fontWeight: 800 }}>★ {hotel.rating}</span>
                                 )}
                               </div>
                               {hotel.address && <div style={{ fontSize: 12, color: '#6b7280' }}>📍 {hotel.address}</div>}
@@ -119,6 +129,7 @@ const panel = {
   maxWidth: 440, width: '100%',
   boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
   maxHeight: '85vh', overflowY: 'auto',
+  animation: 'modalIn 0.18s ease',
 }
 const closeBtn = {
   background: '#f3f4f6', border: 'none', width: 32, height: 32,

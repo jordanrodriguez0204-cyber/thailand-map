@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react'
 import { MapContainer, TileLayer, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useSteps } from './hooks/useSteps'
@@ -24,6 +24,7 @@ import { useItineraries } from './hooks/useItineraries'
 import { ItineraryBar } from './components/ItineraryBar'
 const ExternalToolsPanel = lazy(() => import('./components/ExternalToolsPanel').then(m => ({ default: m.ExternalToolsPanel })))
 import { STORAGE_KEYS, ALL_FILTER, CATEGORIES } from './constants'
+import { exportBackup, importBackup } from './utils/backup'
 import { METRO_LINES } from './data/bangkokMetro'
 import { isSupabaseReady } from './lib/supabase'
 
@@ -155,6 +156,7 @@ export default function App() {
   const [showHotels, setShowHotels]   = useState(false)
   const [hotelCompare, setHotelCompare] = useState(null) // null | { stepId: string|null }
   const [showMore, setShowMore]       = useState(false)
+  const [darkMap, setDarkMap]         = useState(() => localStorage.getItem('th_dark_map') === '1')
   const [showTransit, setShowTransit] = useState(true)
   const [visibleLines, setVisibleLines] = useState(() =>
     Object.fromEntries(Object.keys(METRO_LINES).map(k => [k, true]))
@@ -164,9 +166,20 @@ export default function App() {
   const [showCityMenu, setShowCityMenu] = useState(false)
   const [showTools, setShowTools]       = useState(false)
 
+  // File d'attente : deux toasts rapprochés s'affichent l'un après l'autre
+  const toastQueue = useRef({ queue: [], running: false })
   const showToast = useCallback((msg, type = 'info', ms = 3000) => {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), ms)
+    const q = toastQueue.current
+    q.queue.push({ msg, type, ms })
+    if (q.running) return
+    q.running = true
+    const next = () => {
+      const item = q.queue.shift()
+      if (!item) { q.running = false; setToast(null); return }
+      setToast({ msg: item.msg, type: item.type })
+      setTimeout(() => { setToast(null); setTimeout(next, 180) }, item.ms)
+    }
+    next()
   }, [])
 
   useEffect(() => {
@@ -223,6 +236,21 @@ export default function App() {
     { icon: '🚇', label: 'Métro Bangkok', toggle: true, active: showTransit, onClick: () => setShowTransit(v => !v) },
     { icon: '🗺️', label: 'Villes', onClick: () => setShowCityMenu(true) },
     { icon: '🔗', label: 'Outils utiles', onClick: () => setShowTools(true) },
+    {
+      icon: '🌙', label: 'Carte sombre', toggle: true, active: darkMap,
+      onClick: () => setDarkMap(v => { localStorage.setItem('th_dark_map', v ? '0' : '1'); return !v }),
+    },
+    {
+      icon: '💾', label: 'Exporter la sauvegarde',
+      onClick: () => {
+        const n = exportBackup()
+        showToast(`💾 Sauvegarde exportée (${n} éléments)`, 'success')
+      },
+    },
+    {
+      icon: '📥', label: 'Importer une sauvegarde',
+      onClick: () => document.getElementById('backup-file-input')?.click(),
+    },
   ]
 
   return (
@@ -354,11 +382,18 @@ export default function App() {
           visible={showTransit}
           visibleLines={visibleLines}
           onToggleLine={(id, val) => setVisibleLines(prev => ({ ...prev, [id]: val }))}
+          isMobile={isMobile}
         />
 
         {loading ? (
-          <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', background: '#e8f1f4', fontSize: 15, color: '#6b7280' }}>
-            Chargement…
+          <div style={{
+            display: 'flex', flexDirection: 'column', height: '100%',
+            alignItems: 'center', justifyContent: 'center', gap: 14,
+            background: 'linear-gradient(160deg, #eef2ff 0%, #e8f1f4 100%)',
+          }}>
+            <div style={{ fontSize: 44 }}>🇹🇭</div>
+            <div style={{ fontWeight: 800, fontSize: 17, color: '#111827' }}>Thaïlande · Août 2026</div>
+            <div style={{ fontSize: 20, color: '#6366f1', animation: 'spin 0.9s linear infinite' }}>◌</div>
           </div>
         ) : (
           <MapContainer
@@ -372,8 +407,9 @@ export default function App() {
             preferCanvas={true}
           >
             <TileLayer
+              key={darkMap ? 'dark' : 'light'}
               attribution='<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap</a>'
-              url={`https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
+              url={`https://api.maptiler.com/maps/${darkMap ? 'streets-v2-dark' : 'streets-v2'}/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
               maxZoom={20}
               tileSize={256}
             />
@@ -479,6 +515,24 @@ export default function App() {
       )}
       {showAdd && <AddStepModal onAdd={handleAdd} onClose={() => setShowAdd(false)} />}
       {toast && <Toast message={toast.msg} type={toast.type} />}
+      <input
+        id="backup-file-input"
+        type="file"
+        accept="application/json,.json"
+        style={{ display: 'none' }}
+        onChange={async (e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ''
+          if (!file) return
+          try {
+            const n = await importBackup(file)
+            showToast(`📥 ${n} éléments restaurés — rechargement…`, 'success')
+            setTimeout(() => window.location.reload(), 1200)
+          } catch (err) {
+            showToast(`⚠️ ${err.message}`, 'warning', 4000)
+          }
+        }}
+      />
 
 
       <style>{`

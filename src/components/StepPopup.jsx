@@ -209,7 +209,18 @@ function parseThaiAddress(raw) {
   return { road: roads[0] || null, soiNum }
 }
 
-const geocodeCache = new Map()
+// Cache persistant (localStorage) — évite de re-frapper Nominatim (limite 1 req/s)
+const GEOCODE_CACHE_KEY = 'th_geocode_cache'
+const geocodeCache = new Map(
+  (() => { try { return JSON.parse(localStorage.getItem(GEOCODE_CACHE_KEY) || '[]') } catch { return [] } })()
+)
+function persistGeocodeCache() {
+  try {
+    // Cap à 200 entrées (les plus récentes)
+    const entries = [...geocodeCache.entries()].slice(-200)
+    localStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(entries))
+  } catch { /* quota plein — tant pis, cache RAM seul */ }
+}
 
 async function doGeocode(address, stepNom) {
   const cacheKey = `${address.trim().toLowerCase()}|${stepNom}`
@@ -275,6 +286,7 @@ async function doGeocode(address, stepNom) {
     if (best) {
       const result = { lat: +best.lat, lng: +best.lon, label: best.display_name?.split(',').slice(0,3).join(', ') || '' }
       geocodeCache.set(cacheKey, result)
+      persistGeocodeCache()
       return result
     }
   }
@@ -597,6 +609,7 @@ const card = {
   background: '#fff', borderRadius: 18, padding: 22,
   maxWidth: 400, width: '100%',
   boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
+  animation: 'modalIn 0.18s ease',
   maxHeight: '90vh', overflowY: 'auto',
 }
 const closeBtn = {

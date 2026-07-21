@@ -52,7 +52,7 @@ function StepCard({ step, color }) {
             {step.nom}
           </div>
           {step.dates && (
-            <div style={{ fontSize: 10.5, color: '#9ca3af' }}>{step.dates}</div>
+            <div style={{ fontSize: 11.5, color: '#6b7280' }}>{step.dates}</div>
           )}
         </div>
       </div>
@@ -76,13 +76,13 @@ function SegmentRow({ seg, color }) {
         <span style={{ fontSize: 10, fontWeight: 600, color: tm.color }}>
           {seg.km} km
         </span>
-        <span style={{ fontSize: 10, color: '#9ca3af' }}>·</span>
+        <span style={{ fontSize: 11, color: '#6b7280' }}>·</span>
         <span style={{ fontSize: 10, fontWeight: 600, color: '#374151' }}>
           {formatDuration(seg.dur)}
         </span>
         {seg.price > 0 && (
           <>
-            <span style={{ fontSize: 10, color: '#9ca3af' }}>·</span>
+            <span style={{ fontSize: 11, color: '#6b7280' }}>·</span>
             <span style={{ fontSize: 10, fontWeight: 700, color: '#16a34a' }}>
               {seg.price} CHF
             </span>
@@ -90,7 +90,7 @@ function SegmentRow({ seg, color }) {
         )}
       </div>
       {seg.notes && (
-        <div style={{ fontSize: 9.5, color: '#b0b0b0', fontStyle: 'italic', textAlign: 'center', maxWidth: 120 }}>
+        <div style={{ fontSize: 10.5, color: '#9ca3af', fontStyle: 'italic', textAlign: 'center', maxWidth: 120 }}>
           {seg.notes}
         </div>
       )}
@@ -187,6 +187,7 @@ export function ComparePanel({ itineraries, getAllStepsForCompare, onClose }) {
         background: '#f8f9fb', borderRadius: 20, width: '100%', maxWidth: 760,
         maxHeight: '92vh', display: 'flex', flexDirection: 'column',
         boxShadow: '0 32px 80px rgba(0,0,0,0.35)',
+        animation: 'modalIn 0.18s ease',
       }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}

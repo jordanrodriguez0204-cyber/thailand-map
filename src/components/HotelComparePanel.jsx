@@ -125,6 +125,7 @@ export function HotelComparePanel({ steps, activeItin, itineraries, getAllStepsF
         background: '#f8f9fb', borderRadius: 20, width: '100%', maxWidth: 760,
         maxHeight: '92vh', display: 'flex', flexDirection: 'column',
         boxShadow: '0 32px 80px rgba(0,0,0,0.35)',
+        animation: 'modalIn 0.18s ease',
       }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}

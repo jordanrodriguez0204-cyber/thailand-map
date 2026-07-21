@@ -119,6 +119,7 @@ const panel = {
   maxWidth: 700, width: '100%',
   boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
   maxHeight: '90vh', overflowY: 'auto',
+  animation: 'modalIn 0.18s ease',
 }
 const closeBtn = {
   background: '#f3f4f6', border: 'none', width: 32, height: 32,

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { cloudSave, cloudLoad, onCloudChange } from '../lib/cloudStore'
 
 const EMPTY = {
   name: '', price_per_night: null, nights: null, address: '',
@@ -8,20 +9,24 @@ const EMPTY = {
 
 function key(itinId) { return `th_budget_${itinId}` }
 
+// Normalise n'importe quel format (ancien objet unique, tableau incomplet)
+function normalizeAll(raw) {
+  const out = {}
+  for (const [stepId, val] of Object.entries(raw || {})) {
+    if (Array.isArray(val)) {
+      // Migration douce : complète les champs manquants (booking_url, rating…)
+      out[stepId] = val.map(h => ({ ...EMPTY, ...h }))
+    } else if (val && typeof val === 'object') {
+      // Migration: ancien format objet unique → tableau
+      out[stepId] = [{ ...EMPTY, ...val, id: crypto.randomUUID(), selected: true }]
+    }
+  }
+  return out
+}
+
 function loadFor(itinId) {
   try {
-    const raw = JSON.parse(localStorage.getItem(key(itinId)) || '{}')
-    const out = {}
-    for (const [stepId, val] of Object.entries(raw)) {
-      if (Array.isArray(val)) {
-        // Migration douce : complète les champs manquants (booking_url, rating…)
-        out[stepId] = val.map(h => ({ ...EMPTY, ...h }))
-      } else if (val && typeof val === 'object') {
-        // Migration: ancien format objet unique → tableau
-        out[stepId] = [{ ...EMPTY, ...val, id: crypto.randomUUID(), selected: true }]
-      }
-    }
-    return out
+    return normalizeAll(JSON.parse(localStorage.getItem(key(itinId)) || '{}'))
   } catch { return {} }
 }
 
@@ -30,8 +35,29 @@ export function useBudget(itinId = 'default') {
 
   useEffect(() => { setData(loadFor(itinId)) }, [itinId])
 
+  // Sync cloud : charge la version distante, écoute les modifs de l'autre appareil
+  useEffect(() => {
+    let stale = false
+    cloudLoad(key(itinId)).then(remote => {
+      if (remote && !stale) {
+        const normalized = normalizeAll(remote)
+        localStorage.setItem(key(itinId), JSON.stringify(normalized))
+        setData(normalized)
+      }
+    })
+    const off = onCloudChange((k, value) => {
+      if (k === key(itinId)) {
+        const normalized = normalizeAll(value)
+        localStorage.setItem(k, JSON.stringify(normalized))
+        setData(normalized)
+      }
+    })
+    return () => { stale = true; off() }
+  }, [itinId])
+
   function persist(next) {
     localStorage.setItem(key(itinId), JSON.stringify(next))
+    cloudSave(key(itinId), next)
     return next
   }
 

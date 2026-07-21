@@ -67,10 +67,18 @@ npm run build        # build prod
 npx vercel --prod --yes  # déployer
 ```
 
-## Variables d'env (.env)
+## Variables d'env (.env.local)
 ```
 VITE_MAPTILER_KEY=...
 VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
-VITE_GEMINI_KEY=...   # plus utilisé (IA supprimée)
+VITE_APP_PIN=...
 ```
+⚠️ Toute variable `VITE_*` finit en clair dans le bundle JS public — jamais de clé secrète ici.
+
+## Sync cloud (`src/lib/cloudStore.js`)
+- Table Supabase `app_data` (key/value JSONB) — miroir des clés localStorage `th_*`
+- Hôtels, segments, activités, liste d'itinéraires : write-through localStorage + cloud (débounce 800ms), realtime entre appareils
+- L'itinéraire **actif** n'est PAS synchronisé (choix par appareil)
+- Si la table n'existe pas → no-op silencieux (localStorage seul). Création : `SUPABASE_SETUP.sql`
+- Export/import JSON complet : menu "Plus" → Exporter/Importer la sauvegarde

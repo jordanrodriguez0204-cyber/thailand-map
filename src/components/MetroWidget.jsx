@@ -48,14 +48,14 @@ export function MetroWidget({ lat, lng, compact = false }) {
     <div style={containerStyle}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: compact ? 6 : 8 }}>
-        <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+        <div style={{ fontSize: 10.5, color: '#6b7280', fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase' }}>
           🚇 Stations à proximité
         </div>
         {loading && (
-          <div style={{ fontSize: 10, color: '#6366f1' }}>calcul…</div>
+          <div style={{ fontSize: 10.5, color: '#6366f1' }}>calcul…</div>
         )}
         {!loading && (
-          <div style={{ fontSize: 9, color: '#9ca3af' }}>via OSM</div>
+          <div style={{ fontSize: 10, color: '#6b7280' }}>via OSM</div>
         )}
       </div>
 
@@ -99,14 +99,14 @@ export function MetroWidget({ lat, lng, compact = false }) {
 
               {/* Distance + time + bar */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 10, color: '#9ca3af', flexShrink: 0, minWidth: compact ? 34 : 40 }}>
+                <span style={{ fontSize: 11, color: '#6b7280', flexShrink: 0, minWidth: compact ? 34 : 40 }}>
                   {loading && !route ? '…' : fmtDist(distM)}
                 </span>
-                <span style={{ fontSize: 10, fontWeight: 700, color, flexShrink: 0 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color, flexShrink: 0 }}>
                   {walkEmoji(walkMin)} {loading && !route ? '…' : `${walkMin} min`}
                 </span>
                 {!real && !loading && (
-                  <span style={{ fontSize: 8.5, color: '#d1d5db', flexShrink: 0 }}>~</span>
+                  <span style={{ fontSize: 10, color: '#9ca3af', flexShrink: 0 }}>~</span>
                 )}
                 <div style={{ flex: 1, height: 3, background: '#e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
                   <div style={{

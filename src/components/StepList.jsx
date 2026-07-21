@@ -59,7 +59,7 @@ const SortableItem = memo(function SortableItem({ step, selected, realtimeFlash,
             {step.nom}
           </span>
         </div>
-        <div style={{ fontSize: 10.5, color: '#9ca3af', marginTop: 1 }}>{step.dates}</div>
+        <div style={{ fontSize: 11.5, color: '#6b7280', marginTop: 1 }}>{step.dates}</div>
       </div>
 
       <button
@@ -86,7 +86,7 @@ function StepConnector({ from, to, segment }) {
     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '2px 8px 2px 50px', marginBottom: 3 }}>
       <span style={{ fontSize: 11 }}>{tm.icon}</span>
       <div style={{ flex: 1, borderTop: `1.5px dashed ${tm.color}55` }} />
-      <span style={{ fontSize: 10, color: '#c0c0c0', whiteSpace: 'nowrap' }}>{km} km</span>
+      <span style={{ fontSize: 11, color: '#9ca3af', whiteSpace: 'nowrap' }}>{km} km</span>
     </div>
   )
 }
@@ -113,7 +113,7 @@ function SegmentEditor({ seg, from, to, onUpdate }) {
   return (
     <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid #e5e7eb' }}>
       {/* Mode transport */}
-      <div style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.4 }}>Mode de transport</div>
+      <div style={{ fontSize: 10.5, color: '#6b7280', fontWeight: 600, marginBottom: 5, textTransform: 'uppercase', letterSpacing: 0.4 }}>Mode de transport</div>
       <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap' }}>
         {MODES_LIST.map(m => (
           <button key={m.key} onClick={() => onUpdate({ mode: m.key, duration_override: null })}
@@ -130,7 +130,7 @@ function SegmentEditor({ seg, from, to, onUpdate }) {
 
       {/* Prix */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-        <label style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        <label style={{ fontSize: 10.5, color: '#6b7280', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
           Prix (CHF)
           <input
             type="number" min="0" placeholder="0"
@@ -139,7 +139,7 @@ function SegmentEditor({ seg, from, to, onUpdate }) {
             style={{ border: '1px solid #e5e7eb', borderRadius: 7, padding: '6px 8px', fontSize: 12, outline: 'none', fontWeight: 600 }}
           />
         </label>
-        <label style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+        <label style={{ fontSize: 10.5, color: '#6b7280', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
           Durée (h / min)
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
             <input type="number" min="0" max="48" placeholder="h"
@@ -160,7 +160,7 @@ function SegmentEditor({ seg, from, to, onUpdate }) {
       </div>
 
       {/* Notes */}
-      <label style={{ fontSize: 10, color: '#9ca3af', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+      <label style={{ fontSize: 10.5, color: '#6b7280', fontWeight: 600, display: 'flex', flexDirection: 'column', gap: 3, textTransform: 'uppercase', letterSpacing: 0.4 }}>
         Notes (horaires, compagnie…)
         <input
           placeholder="Ex: Train de nuit 21h → 06h30, Thai Railways"
@@ -225,7 +225,7 @@ function JourneyView({ steps, getSegment, updateSegment }) {
               <div style={{ fontSize: 12, fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {s.from.nom} → {s.to.nom}
               </div>
-              <div style={{ fontSize: 10.5, color: '#9ca3af' }}>{s.tm.label} · {s.km} km · {formatDuration(s.dur)}</div>
+              <div style={{ fontSize: 11.5, color: '#6b7280' }}>{s.tm.label} · {s.km} km · {formatDuration(s.dur)}</div>
             </div>
             <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
               {(s.seg.price_chf || s.seg.price) > 0 && (
@@ -239,7 +239,7 @@ function JourneyView({ steps, getSegment, updateSegment }) {
 
           {/* Notes résumées */}
           {!isOpen && s.seg.notes && (
-            <div style={{ fontSize: 10.5, color: '#9ca3af', fontStyle: 'italic', marginTop: 4, paddingLeft: 26 }}>
+            <div style={{ fontSize: 11.5, color: '#6b7280', fontStyle: 'italic', marginTop: 4, paddingLeft: 26 }}>
               {s.seg.notes}
             </div>
           )}
@@ -262,21 +262,21 @@ function JourneyView({ steps, getSegment, updateSegment }) {
         <div style={{ fontSize: 11, fontWeight: 700, color: '#4f46e5', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>Total voyage</div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
           <div>
-            <div style={{ fontSize: 10, color: '#6b7280' }}>Distance</div>
+            <div style={{ fontSize: 11, color: '#6b7280' }}>Distance</div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{totalKm.toLocaleString()} km</div>
           </div>
           <div>
-            <div style={{ fontSize: 10, color: '#6b7280' }}>Temps de trajet</div>
+            <div style={{ fontSize: 11, color: '#6b7280' }}>Temps de trajet</div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{formatDuration(totalMinutes)}</div>
           </div>
           {totalPrice > 0 && (
             <div>
-              <div style={{ fontSize: 10, color: '#6b7280' }}>Budget transport</div>
+              <div style={{ fontSize: 11, color: '#6b7280' }}>Budget transport</div>
               <div style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>{totalPrice} CHF</div>
             </div>
           )}
           <div>
-            <div style={{ fontSize: 10, color: '#6b7280' }}>Étapes</div>
+            <div style={{ fontSize: 11, color: '#6b7280' }}>Étapes</div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{steps.length}</div>
           </div>
         </div>
@@ -288,7 +288,7 @@ function JourneyView({ steps, getSegment, updateSegment }) {
 function StatChip({ label, value, color }) {
   return (
     <div style={{ background: color + '14', borderRadius: 8, padding: '5px 10px', flex: 1, minWidth: 70 }}>
-      <div style={{ fontSize: 9.5, color, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</div>
+      <div style={{ fontSize: 10.5, color, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</div>
       <div style={{ fontSize: 13, fontWeight: 700, color: '#111827' }}>{value}</div>
     </div>
   )
