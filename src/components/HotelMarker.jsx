@@ -6,7 +6,7 @@ import { MetroWidget } from './MetroWidget'
 function makeIcon(selected) {
   return L.divIcon({
     className: '',
-    html: `<div style="
+    html: `<div class="pin-drop" style="
       background:#fff;
       border:2.5px solid ${selected ? '#6366f1' : '#d1d5db'};
       border-radius:10px;

@@ -1,6 +1,10 @@
 import { useState, useCallback, useEffect } from 'react'
 
-const EMPTY = { name: '', price_per_night: null, nights: null, address: '', lat: null, lng: null, geocoded_name: '' }
+const EMPTY = {
+  name: '', price_per_night: null, nights: null, address: '',
+  lat: null, lng: null, geocoded_name: '',
+  booking_url: null, photo_url: null, rating: null, source: 'manual',
+}
 
 function key(itinId) { return `th_budget_${itinId}` }
 
@@ -10,7 +14,8 @@ function loadFor(itinId) {
     const out = {}
     for (const [stepId, val] of Object.entries(raw)) {
       if (Array.isArray(val)) {
-        out[stepId] = val
+        // Migration douce : complète les champs manquants (booking_url, rating…)
+        out[stepId] = val.map(h => ({ ...EMPTY, ...h }))
       } else if (val && typeof val === 'object') {
         // Migration: ancien format objet unique → tableau
         out[stepId] = [{ ...EMPTY, ...val, id: crypto.randomUUID(), selected: true }]

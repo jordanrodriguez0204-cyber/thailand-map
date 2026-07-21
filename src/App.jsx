@@ -18,6 +18,7 @@ import { MetroLayer } from './components/MetroLayer'
 import { MetroLegend } from './components/MetroLegend'
 import { ZoomControls } from './components/MapControls'
 const HotelPanel = lazy(() => import('./components/HotelPanel').then(m => ({ default: m.HotelPanel })))
+const HotelComparePanel = lazy(() => import('./components/HotelComparePanel').then(m => ({ default: m.HotelComparePanel })))
 import { useActivities } from './hooks/useActivities'
 import { useItineraries } from './hooks/useItineraries'
 import { ItineraryBar } from './components/ItineraryBar'
@@ -152,6 +153,8 @@ export default function App() {
   const [showRoute, setShowRoute]     = useState(true)
   const [showBudget, setShowBudget]   = useState(false)
   const [showHotels, setShowHotels]   = useState(false)
+  const [hotelCompare, setHotelCompare] = useState(null) // null | { stepId: string|null }
+  const [showMore, setShowMore]       = useState(false)
   const [showTransit, setShowTransit] = useState(true)
   const [visibleLines, setVisibleLines] = useState(() =>
     Object.fromEntries(Object.keys(METRO_LINES).map(k => [k, true]))
@@ -212,6 +215,15 @@ export default function App() {
   if (!authed) return <PinGate onAuth={onAuth} />
 
   const flyBangkok = () => setFlyTarget({ lat: 13.745, lng: 100.515, zoom: 13, t: Date.now() })
+
+  // Actions secondaires regroupées derrière "Plus" (desktop + mobile)
+  const moreItems = [
+    { icon: '🏙️', label: 'Bangkok BTS/MRT', onClick: () => { flyBangkok(); setShowTransit(true) } },
+    { icon: '〰️', label: 'Trajet', toggle: true, active: showRoute, onClick: () => setShowRoute(v => !v) },
+    { icon: '🚇', label: 'Métro Bangkok', toggle: true, active: showTransit, onClick: () => setShowTransit(v => !v) },
+    { icon: '🗺️', label: 'Villes', onClick: () => setShowCityMenu(true) },
+    { icon: '🔗', label: 'Outils utiles', onClick: () => setShowTools(true) },
+  ]
 
   return (
     <div style={{ display: 'flex', height: '100dvh', fontFamily: 'Inter, system-ui, sans-serif', overflow: 'hidden' }}>
@@ -277,16 +289,21 @@ export default function App() {
 
         {/* ── DESKTOP top-left controls ── */}
         {!isMobile && (
-          <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 500, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <MapBtn onClick={() => setSidebarOpen(v => !v)} title="Panneau">{sidebarOpen ? '◀' : '▶'}</MapBtn>
-            <MapBtn onClick={() => setFitTrigger(n => n + 1)} title="Recentrer">🎯</MapBtn>
-            <MapBtn onClick={flyBangkok} title="Bangkok BTS/MRT">🏙️</MapBtn>
-            <MapBtn onClick={() => setShowRoute(v => !v)} active={showRoute} title="Trajet">{showRoute ? '〰️' : '➖'}</MapBtn>
-            <MapBtn onClick={() => setShowTransit(v => !v)} active={showTransit} title="Métro">🚇</MapBtn>
-            <MapBtn onClick={() => setShowHotels(true)} title="Hôtels">🏨</MapBtn>
-            <MapBtn onClick={() => setShowBudget(true)} title="Budget">💰</MapBtn>
-            <MapBtn onClick={() => setShowCityMenu(v => !v)} active={showCityMenu} title="Villes">☰</MapBtn>
-            <MapBtn onClick={() => setShowTools(v => !v)} active={showTools} title="Outils utiles">🔗</MapBtn>
+          <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 500 }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <MapBtn onClick={() => setSidebarOpen(v => !v)} title={sidebarOpen ? 'Masquer le panneau' : 'Afficher le panneau'}>{sidebarOpen ? '◀' : '▶'}</MapBtn>
+              <MapBtn label="Recentrer" onClick={() => setFitTrigger(n => n + 1)}>🎯</MapBtn>
+              <MapBtn label="Hôtels" onClick={() => setShowHotels(true)}>🏨</MapBtn>
+              <MapBtn label="Budget" onClick={() => setShowBudget(true)}>💰</MapBtn>
+              <MapBtn label="Plus" active={showMore} onClick={() => setShowMore(v => !v)}>⋯</MapBtn>
+            </div>
+            {showMore && (
+              <MoreMenu
+                isMobile={false}
+                items={moreItems}
+                onClose={() => setShowMore(false)}
+              />
+            )}
           </div>
         )}
 
@@ -302,9 +319,9 @@ export default function App() {
             <div style={{ flex: 1, textAlign: 'center', fontWeight: 700, fontSize: 13, color: '#111827' }}>
               🇹🇭 Thaïlande · Août 2026
             </div>
-            <button onClick={() => setShowCityMenu(v => !v)} style={{ ...mobileTopBtn, background: showCityMenu ? '#6366f1' : '#f3f4f6', color: showCityMenu ? '#fff' : '#374151' }}>
-              🗺️
-            </button>
+            <div style={{ width: 44, display: 'flex', justifyContent: 'flex-end' }}>
+              {!online && <OfflinePill />}
+            </div>
           </div>
         )}
 
@@ -326,8 +343,10 @@ export default function App() {
             borderRadius: 22, padding: '8px 18px',
             boxShadow: '0 2px 14px rgba(0,0,0,0.12)',
             fontWeight: 700, fontSize: 14, color: '#111827', whiteSpace: 'nowrap',
+            display: 'flex', alignItems: 'center', gap: 8,
           }}>
             🇹🇭 Thaïlande · Août 2026
+            {!online && <OfflinePill />}
           </div>
         )}
 
@@ -396,15 +415,16 @@ export default function App() {
             background: 'rgba(255,255,255,0.97)', backdropFilter: 'blur(10px)',
             borderTop: '1px solid #e5e7eb',
             display: 'flex', alignItems: 'center', justifyContent: 'space-around',
-            padding: '8px 4px 12px',
+            padding: '6px 4px calc(8px + env(safe-area-inset-bottom))',
           }}>
             <BottomBtn onClick={() => setFitTrigger(n => n + 1)} label="Recentrer">🎯</BottomBtn>
-            <BottomBtn onClick={flyBangkok} label="Bangkok">🏙️</BottomBtn>
-            <BottomBtn onClick={() => setShowRoute(v => !v)} label="Trajet" active={showRoute}>{showRoute ? '〰️' : '➖'}</BottomBtn>
-            <BottomBtn onClick={() => setShowTransit(v => !v)} label="Métro" active={showTransit}>🚇</BottomBtn>
             <BottomBtn onClick={() => setShowHotels(true)} label="Hôtels">🏨</BottomBtn>
             <BottomBtn onClick={() => setShowBudget(true)} label="Budget">💰</BottomBtn>
+            <BottomBtn onClick={() => setShowMore(v => !v)} label="Plus" active={showMore}>⋯</BottomBtn>
           </div>
+        )}
+        {isMobile && showMore && (
+          <MoreMenu isMobile items={moreItems} onClose={() => setShowMore(false)} />
         )}
       </div>
 
@@ -426,6 +446,8 @@ export default function App() {
             toggleActivity={toggleActivity}
             removeActivity={removeActivity}
             onFlyTo={(lat, lng) => setFlyTarget({ lat, lng, zoom: 16, t: Date.now() })}
+            onToast={showToast}
+            onCompareHotels={(stepId) => { setPopupStep(null); setHotelCompare({ stepId }) }}
           />
         )}
         {showBudget && (
@@ -433,7 +455,21 @@ export default function App() {
         )}
         {showHotels && (
           <HotelPanel steps={steps} getHotels={getHotels} onClose={() => setShowHotels(false)}
-            onFly={(lat, lng) => setFlyTarget({ lat, lng, t: Date.now() })} />
+            onFly={(lat, lng) => setFlyTarget({ lat, lng, t: Date.now() })}
+            onCompare={(stepId) => { setShowHotels(false); setHotelCompare({ stepId: stepId ?? null }) }} />
+        )}
+        {hotelCompare && (
+          <HotelComparePanel
+            steps={steps}
+            activeItin={activeItin || { id: activeItinId, name: 'Itinéraire', color: '#6366f1' }}
+            itineraries={itineraries}
+            getAllStepsForCompare={getAllStepsForCompare}
+            getHotels={getHotels}
+            initialStepId={hotelCompare.stepId}
+            isMobile={isMobile}
+            onClose={() => setHotelCompare(null)}
+            onFly={(lat, lng) => setFlyTarget({ lat, lng, zoom: 15, t: Date.now() })}
+          />
         )}
         {showTools && <ExternalToolsPanel onClose={() => setShowTools(false)} />}
       </Suspense>
@@ -515,14 +551,79 @@ function CityMenu({ steps, isMobile, onClose, onSelect }) {
 function BottomBtn({ onClick, label, active, children }) {
   return (
     <button onClick={onClick} style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
-      background: 'none', border: 'none', cursor: 'pointer',
-      padding: '4px 8px', borderRadius: 10, minWidth: 44,
-      opacity: active === false ? 0.4 : 1,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2,
+      background: active ? '#eef2ff' : 'none', border: 'none', cursor: 'pointer',
+      padding: '4px 10px', borderRadius: 12, minWidth: 60, minHeight: 48, flex: 1, maxWidth: 96,
     }}>
-      <span style={{ fontSize: 22 }}>{children}</span>
-      <span style={{ fontSize: 9, color: active ? '#6366f1' : '#6b7280', fontWeight: active ? 700 : 400 }}>{label}</span>
+      <span style={{ fontSize: 22, lineHeight: 1 }}>{children}</span>
+      <span style={{ fontSize: 10, color: active ? '#6366f1' : '#6b7280', fontWeight: active ? 700 : 500 }}>{label}</span>
     </button>
+  )
+}
+
+function OfflinePill() {
+  return (
+    <span style={{
+      fontSize: 10, background: '#374151', color: '#f9fafb', borderRadius: 8,
+      padding: '3px 8px', fontWeight: 600, whiteSpace: 'nowrap',
+    }}>📡 hors-ligne</span>
+  )
+}
+
+// Menu "Plus" — dropdown sur desktop, bottom sheet sur mobile
+function MoreMenu({ isMobile, items, onClose }) {
+  const row = (item) => (
+    <button
+      key={item.label}
+      onClick={() => { item.onClick(); if (!item.toggle) onClose() }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+        background: item.active ? '#eef2ff' : 'none', border: 'none',
+        borderRadius: 10, padding: isMobile ? '12px 14px' : '9px 12px',
+        minHeight: isMobile ? 48 : 38, cursor: 'pointer', textAlign: 'left',
+      }}
+    >
+      <span style={{ fontSize: 17 }}>{item.icon}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: item.active ? '#6366f1' : '#374151', flex: 1 }}>
+        {item.label}
+      </span>
+      {item.toggle && (
+        <span style={{
+          fontSize: 10, fontWeight: 700, borderRadius: 6, padding: '2px 8px',
+          background: item.active ? '#6366f1' : '#f3f4f6',
+          color: item.active ? '#fff' : '#9ca3af',
+        }}>{item.active ? 'ON' : 'OFF'}</span>
+      )}
+    </button>
+  )
+
+  if (isMobile) {
+    return (
+      <>
+        <div onClick={onClose} style={{ position: 'absolute', inset: 0, zIndex: 505, background: 'rgba(0,0,0,0.25)' }} />
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 510,
+          background: '#fff', borderRadius: '18px 18px 0 0',
+          padding: '10px 10px calc(14px + env(safe-area-inset-bottom))',
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.2)',
+        }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: '#e5e7eb', margin: '0 auto 8px' }} />
+          {items.map(row)}
+        </div>
+      </>
+    )
+  }
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 505 }} />
+      <div style={{
+        position: 'absolute', top: 'calc(100% + 6px)', left: 0, zIndex: 510,
+        background: '#fff', borderRadius: 12, padding: 6, minWidth: 200,
+        boxShadow: '0 8px 32px rgba(0,0,0,0.18)', border: '1px solid #f3f4f6',
+      }}>
+        {items.map(row)}
+      </div>
+    </>
   )
 }
 
@@ -532,21 +633,24 @@ const mobileTopBtn = {
   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
 }
 
-function MapBtn({ onClick, title, active, children }) {
+function MapBtn({ onClick, title, label, active, children }) {
   return (
     <button
       onClick={onClick}
-      title={title}
+      title={title || label}
       style={{
-        background: active === false ? 'rgba(255,255,255,0.7)' : '#fff',
-        border: '1px solid #e5e7eb',
-        borderRadius: 10, padding: '8px 11px',
+        background: active ? '#eef2ff' : '#fff',
+        border: active ? '1px solid #c7d2fe' : '1px solid #e5e7eb',
+        borderRadius: 10, padding: label ? '8px 13px' : '8px 11px',
         cursor: 'pointer', fontSize: 17, lineHeight: 1,
         boxShadow: '0 2px 10px rgba(0,0,0,0.12)',
-        opacity: active === false ? 0.6 : 1,
+        display: 'flex', alignItems: 'center', gap: 7,
       }}
     >
       {children}
+      {label && (
+        <span style={{ fontSize: 13, fontWeight: 600, color: active ? '#6366f1' : '#374151' }}>{label}</span>
+      )}
     </button>
   )
 }

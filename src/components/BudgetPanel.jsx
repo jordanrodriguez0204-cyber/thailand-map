@@ -32,7 +32,7 @@ export function BudgetPanel({ steps, getSegment, getHotel, onClose }) {
     <div style={overlay} onClick={onClose}>
       <div style={panel} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>💰 Récapitulatif du voyage</h2>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>💰 Budget du voyage</h2>
           <button onClick={onClose} style={closeBtn}>×</button>
         </div>
 

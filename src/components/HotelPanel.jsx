@@ -1,4 +1,4 @@
-export function HotelPanel({ steps, getHotels, onClose, onFly }) {
+export function HotelPanel({ steps, getHotels, onClose, onFly, onCompare }) {
   const entries = steps.flatMap(s => {
     const hotels = getHotels ? getHotels(s.id) : []
     return hotels.map(h => ({ step: s, hotel: h }))
@@ -8,8 +8,16 @@ export function HotelPanel({ steps, getHotels, onClose, onFly }) {
     <div style={overlay} onClick={onClose}>
       <div style={panel} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>🏨 Hébergements</h2>
-          <button onClick={onClose} style={closeBtn}>×</button>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>🏨 Hôtels</h2>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {onCompare && entries.length >= 2 && (
+              <button onClick={() => onCompare(null)} style={{
+                background: '#eef2ff', color: '#4f46e5', border: 'none', borderRadius: 8,
+                padding: '8px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', minHeight: 36,
+              }}>⚖️ Comparer</button>
+            )}
+            <button onClick={onClose} style={closeBtn}>×</button>
+          </div>
         </div>
 
         {entries.length === 0 ? (
@@ -24,8 +32,14 @@ export function HotelPanel({ steps, getHotels, onClose, onFly }) {
               if (!hotels.length) return null
               return (
                 <div key={step.id}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 }}>
-                    Étape {step.ordre} — {step.nom}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      Étape {step.ordre} — {step.nom}
+                    </span>
+                    {onCompare && hotels.length >= 2 && (
+                      <button onClick={() => onCompare(step.id)} title="Comparer les hôtels de cette étape"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }}>⚖️</button>
+                    )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {hotels.map(hotel => {

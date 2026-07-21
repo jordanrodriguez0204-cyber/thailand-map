@@ -27,8 +27,11 @@ function loadItinData(itinId, getAllStepsForCompare) {
 
   const totalKm = segments.reduce((a, s) => a + s.km, 0)
   const totalTransport = segments.reduce((a, s) => a + (s.price || 0), 0)
-  const totalHotel = Object.values(hotelsRaw).reduce((a, h) =>
-    a + ((h.price_per_night || 0) * (h.nights || 0)), 0)
+  const totalHotel = Object.values(hotelsRaw).reduce((a, val) => {
+    // Nouveau format : tableau d'hôtels (le sélectionné compte) ; ancien : objet unique
+    const h = Array.isArray(val) ? (val.find(x => x.selected) || val[0]) : val
+    return a + ((h?.price_per_night || 0) * (h?.nights || 0))
+  }, 0)
   const totalDuration = segments.reduce((a, s) => a + s.dur, 0)
 
   return { steps, segments, totalKm, totalTransport, totalHotel, totalDuration }

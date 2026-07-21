@@ -4,6 +4,7 @@ import { haversineKm } from '../utils/geo'
 import { CATEGORIES } from '../constants'
 import { MetroWidget } from './MetroWidget'
 import { getNearestStations, fetchWalkingRoute } from '../utils/metroUtils'
+import { isBookingUrl, hotelNameFromUrl, cleanBookingUrl, fetchBookingInfo } from '../utils/bookingImport'
 import { WeatherBadge } from './WeatherBadge'
 import { getTips } from '../data/destinations'
 
@@ -18,7 +19,7 @@ function timeAgo(iso) {
 
 const TABS = ['Info', 'Activités', 'Météo', 'Tips', 'Budget', '🔗']
 
-export function StepPopup({ step, prevStep, onClose, onEdit, getHotels, addHotel, updateHotel, deleteHotel, selectHotel, getActivities, addActivity, toggleActivity, removeActivity, onFlyTo }) {
+export function StepPopup({ step, prevStep, onClose, onEdit, getHotels, addHotel, updateHotel, deleteHotel, selectHotel, getActivities, addActivity, toggleActivity, removeActivity, onFlyTo, onToast, onCompareHotels }) {
   const [tab, setTab] = useState('Info')
   const cat = CATEGORIES[step.categorie] || { label: step.categorie, emoji: '📍', color: '#6b7280' }
   const dist = prevStep ? haversineKm(prevStep.lat, prevStep.lng, step.lat, step.lng) : null
@@ -111,6 +112,8 @@ export function StepPopup({ step, prevStep, onClose, onEdit, getHotels, addHotel
               onDelete={(hotelId) => deleteHotel && deleteHotel(step.id, hotelId)}
               onSelect={(hotelId) => selectHotel && selectHotel(step.id, hotelId)}
               onFlyTo={onFlyTo}
+              onToast={onToast}
+              onCompare={onCompareHotels}
             />
           )}
         </div>
@@ -130,7 +133,7 @@ export function StepPopup({ step, prevStep, onClose, onEdit, getHotels, addHotel
 
 // ── Multi-hôtels ────────────────────────────────────────────────────────────
 
-function HotelsTab({ stepId, stepNom, hotels, onAdd, onUpdate, onDelete, onSelect, onFlyTo }) {
+function HotelsTab({ stepId, stepNom, hotels, onAdd, onUpdate, onDelete, onSelect, onFlyTo, onToast, onCompare }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       {hotels.length === 0 && (
@@ -149,6 +152,7 @@ function HotelsTab({ stepId, stepNom, hotels, onAdd, onUpdate, onDelete, onSelec
           onDelete={() => onDelete(hotel.id)}
           onSelect={() => onSelect(hotel.id)}
           onFlyTo={onFlyTo}
+          onToast={onToast}
         />
       ))}
       <button
@@ -156,11 +160,23 @@ function HotelsTab({ stepId, stepNom, hotels, onAdd, onUpdate, onDelete, onSelec
         style={{
           background: '#f0f4ff', color: '#6366f1', border: '1.5px dashed #c7d2fe',
           borderRadius: 10, padding: '9px 0', fontSize: 13, fontWeight: 700,
-          cursor: 'pointer', width: '100%',
+          cursor: 'pointer', width: '100%', minHeight: 44,
         }}
       >
         + Ajouter un hôtel
       </button>
+      {onCompare && hotels.filter(h => h.name || h.address).length >= 2 && (
+        <button
+          onClick={() => onCompare(stepId)}
+          style={{
+            background: '#eef2ff', color: '#4f46e5', border: 'none',
+            borderRadius: 10, padding: '9px 0', fontSize: 13, fontWeight: 700,
+            cursor: 'pointer', width: '100%', minHeight: 44,
+          }}
+        >
+          ⚖️ Comparer ces hôtels
+        </button>
+      )}
     </div>
   )
 }
@@ -266,11 +282,14 @@ async function doGeocode(address, stepNom) {
   return null
 }
 
-function HotelCard({ hotel, index, stepNom, isOnly, onUpdate, onDelete, onSelect, onFlyTo }) {
+function HotelCard({ hotel, index, stepNom, isOnly, onUpdate, onDelete, onSelect, onFlyTo, onToast }) {
   const [geocoding, setGeocoding] = useState(false)
   const [geocodeErr, setGeocodeErr] = useState(null)
   const [localName, setLocalName] = useState(hotel.name || '')
   const [localAddress, setLocalAddress] = useState(hotel.address || '')
+  const [bookingInput, setBookingInput] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [importErr, setImportErr] = useState(null)
   const debouncedName = useDebounce(localName)
   const debouncedAddress = useDebounce(localAddress)
   const total = hotel.price_per_night && hotel.nights ? hotel.price_per_night * hotel.nights : null
@@ -297,6 +316,64 @@ function HotelCard({ hotel, index, stepNom, isOnly, onUpdate, onDelete, onSelect
     setGeocoding(false)
   }
 
+  async function handleBookingImport(rawUrl) {
+    const url = (rawUrl || bookingInput).trim()
+    if (!isBookingUrl(url) || importing) return
+    setImporting(true); setImportErr(null)
+    const stored = cleanBookingUrl(url)
+    try {
+      const info = await fetchBookingInfo(url)
+      const changes = {
+        booking_url: stored, source: 'booking',
+        ...(info.name ? { name: info.name } : {}),
+        ...(info.address ? { address: info.address } : {}),
+        ...(info.photo_url ? { photo_url: info.photo_url } : {}),
+        ...(info.rating != null ? { rating: info.rating } : {}),
+      }
+      if (info.lat != null && info.lng != null) {
+        changes.lat = info.lat; changes.lng = info.lng
+        changes.geocoded_name = info.address || info.name || ''
+      }
+      onUpdate(changes)
+      if (info.name) setLocalName(info.name)
+      if (info.address) setLocalAddress(info.address)
+      if (changes.lat != null) {
+        onFlyTo?.(changes.lat, changes.lng)
+        onToast?.('🏨 Hôtel importé depuis Booking', 'success')
+      } else if (info.name) {
+        // Coordonnées absentes → géocode sur le nom
+        const geo = await doGeocode(info.address || info.name, stepNom)
+        if (geo) {
+          onUpdate({ lat: geo.lat, lng: geo.lng, geocoded_name: geo.label })
+          onFlyTo?.(geo.lat, geo.lng)
+          onToast?.('🏨 Hôtel importé depuis Booking', 'success')
+        } else {
+          setImportErr('Nom récupéré, mais localisation introuvable — vérifie l\'adresse puis clique 📌')
+        }
+      }
+      setBookingInput('')
+    } catch {
+      // API indisponible (dev local, blocage Booking…) → nom depuis l'URL + géocodage
+      const guessed = hotelNameFromUrl(url)
+      if (guessed) {
+        onUpdate({ name: guessed, booking_url: stored, source: 'booking' })
+        setLocalName(guessed)
+        const geo = await doGeocode(`${guessed} hotel`, stepNom).catch(() => null)
+        if (geo) {
+          onUpdate({ lat: geo.lat, lng: geo.lng, geocoded_name: geo.label })
+          onFlyTo?.(geo.lat, geo.lng)
+          onToast?.('🏨 Hôtel localisé (infos partielles)', 'success')
+        } else {
+          setImportErr('Impossible de récupérer les infos — remplis l\'adresse manuellement puis clique 📌')
+        }
+        setBookingInput('')
+      } else {
+        setImportErr('Impossible de récupérer les infos — remplis manuellement')
+      }
+    }
+    setImporting(false)
+  }
+
   return (
     <div style={{
       border: hotel.selected ? '2px solid #6366f1' : '1.5px solid #e5e7eb',
@@ -305,8 +382,14 @@ function HotelCard({ hotel, index, stepNom, isOnly, onUpdate, onDelete, onSelect
     }}>
       {/* En-tête de la card */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderBottom: '1px solid #f3f4f6', background: hotel.selected ? '#ede9fe' : '#f3f4f6' }}>
-        <span style={{ fontWeight: 700, fontSize: 12, color: hotel.selected ? '#6366f1' : '#6b7280', flex: 1 }}>
+        <span style={{ fontWeight: 700, fontSize: 12, color: hotel.selected ? '#6366f1' : '#6b7280', flex: 1, display: 'flex', alignItems: 'center', gap: 6 }}>
           {hotel.selected ? '★ Sélectionné (budget)' : `Option ${index + 1}`}
+          {hotel.source === 'booking' && (
+            <span style={{ fontSize: 9.5, background: '#ede9fe', color: '#6366f1', borderRadius: 5, padding: '2px 6px', fontWeight: 700, letterSpacing: 0.3 }}>via Booking</span>
+          )}
+          {hotel.rating != null && (
+            <span style={{ fontSize: 10, background: '#fef3c7', color: '#92400e', borderRadius: 5, padding: '2px 6px', fontWeight: 700 }}>★ {hotel.rating}</span>
+          )}
         </span>
         {!hotel.selected && (
           <button onClick={e => { e.stopPropagation(); onSelect() }} style={{ fontSize: 11, background: '#6366f1', color: '#fff', border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontWeight: 600 }}>
@@ -324,6 +407,47 @@ function HotelCard({ hotel, index, stepNom, isOnly, onUpdate, onDelete, onSelect
 
       {/* Formulaire */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 12px' }}>
+
+        {/* Import Booking.com */}
+        {hotel.booking_url ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f5f3ff', borderRadius: 8, padding: '6px 10px' }}>
+            <span style={{ fontSize: 11, color: '#6366f1', fontWeight: 600, flex: 1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+              🔗 Lié à Booking.com
+            </span>
+            <a href={hotel.booking_url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: '#6366f1', fontWeight: 700, textDecoration: 'none', flexShrink: 0 }}>
+              Ouvrir ↗
+            </a>
+            <button
+              onClick={e => { e.stopPropagation(); onUpdate({ booking_url: null, source: 'manual' }) }}
+              title="Détacher le lien"
+              style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: 13, cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}
+            >✕</button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input
+              style={{
+                ...inputStyle, flex: 1,
+                opacity: importing ? 0.55 : 1,
+                background: importing ? '#f3f4f6' : inputStyle.background,
+              }}
+              placeholder="Colle un lien Booking.com ici"
+              value={bookingInput}
+              disabled={importing}
+              onChange={e => {
+                const v = e.target.value
+                setBookingInput(v)
+                if (isBookingUrl(v)) handleBookingImport(v)
+              }}
+              onKeyDown={e => e.key === 'Enter' && handleBookingImport()}
+            />
+            {importing && (
+              <span style={{ flexShrink: 0, fontSize: 14, color: '#6366f1', animation: 'spin 0.9s linear infinite', display: 'inline-block' }}>◌</span>
+            )}
+          </div>
+        )}
+        {importErr && <span style={{ fontSize: 11, color: '#ef4444' }}>{importErr}</span>}
+
         <label style={labelStyle}>
           <span>🏨 Nom</span>
           <input style={inputStyle} placeholder="Ex: Mandarin Oriental…" value={localName} onChange={e => setLocalName(e.target.value)} />

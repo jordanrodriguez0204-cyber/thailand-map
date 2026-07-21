@@ -12,3 +12,20 @@ body {
 ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
 
 .leaflet-container { background: #dde8ef; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(6px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Apparition d'un pin après géocodage */
+@keyframes pinDrop {
+  0%   { opacity: 0; transform: translateY(-14px) scale(0.7); }
+  60%  { opacity: 1; transform: translateY(2px) scale(1.05); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.pin-drop { animation: pinDrop 0.35s ease-out; }
