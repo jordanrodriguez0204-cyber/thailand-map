@@ -20,6 +20,7 @@ import { MetroLegend } from './components/MetroLegend'
 import { ZoomControls } from './components/MapControls'
 const HotelPanel = lazy(() => import('./components/HotelPanel').then(m => ({ default: m.HotelPanel })))
 const TripComparePanel = lazy(() => import('./components/TripComparePanel').then(m => ({ default: m.TripComparePanel })))
+const TodayView = lazy(() => import('./components/TodayView').then(m => ({ default: m.TodayView })))
 import { useActivities } from './hooks/useActivities'
 import { useItineraries } from './hooks/useItineraries'
 import { ItineraryBar } from './components/ItineraryBar'
@@ -27,8 +28,9 @@ const ExternalToolsPanel = lazy(() => import('./components/ExternalToolsPanel').
 import { STORAGE_KEYS, ALL_FILTER, CATEGORIES } from './constants'
 import { CategoryIcon, TargetIcon, BedIcon, WalletIcon, DotsIcon, MenuIcon, CloseIcon,
   CityIcon, RouteIcon, MetroIcon, MapIcon, LinkIcon, MoonIcon, SatelliteIcon, SunIcon,
-  DownloadIcon, UploadIcon, WifiOffIcon, ScalesIcon, Avatar, Spinner } from './components/icons'
+  DownloadIcon, UploadIcon, WifiOffIcon, ScalesIcon, CalendarIcon, Avatar, Spinner } from './components/icons'
 import { exportBackup, importBackup } from './utils/backup'
+import { isDuringTrip } from './utils/tripDates'
 import { METRO_LINES } from './data/bangkokMetro'
 import { isSupabaseReady } from './lib/supabase'
 
@@ -164,11 +166,18 @@ function useIsMobile() {
 export default function App() {
   const { authed, user, onAuth } = useAuth()
   const isMobile = useIsMobile()
-  const { itineraries, activeItinId, activeItin, create: createItin, switchTo: switchItin, rename: renameItin, remove: removeItin } = useItineraries()
+  const { itineraries, activeItinId, create: createItin, switchTo: switchItin, rename: renameItin, remove: removeItin } = useItineraries()
   const { steps, loading, online, realtimeFlash, addStep, updateStep, deleteStep, reorderSteps, undo, canUndo, copyStepsTo, deleteItinerarySteps, getAllStepsForCompare } = useSteps(user, activeItinId)
   const { getSegment, updateSegment } = useSegments(activeItinId)
   const { getHotels, getSelectedHotel, addHotel, updateHotel, deleteHotel, selectHotel, setUserPick } = useBudget(activeItinId)
   const { getActivities, addActivity, toggleActivity, removeActivity } = useActivities(activeItinId)
+
+  // Pendant le voyage, l'app s'ouvre sur la vue « Aujourd'hui » (une fois par session)
+  const todayAutoShown = useRef(false)
+  useEffect(() => {
+    if (todayAutoShown.current || loading || !authed || steps.length === 0) return
+    if (isDuringTrip(steps)) { todayAutoShown.current = true; setShowToday(true) }
+  }, [loading, steps, authed])
 
   const [selectedId, setSelectedId]   = useState(null)
   const [popupStep, setPopupStep]     = useState(null)
@@ -183,6 +192,7 @@ export default function App() {
   const [showHotels, setShowHotels]   = useState(false)
   // Comparateur unique du voyage — null | { stepId: string|null } (stepId = étape à mettre en avant)
   const [tripCompare, setTripCompare] = useState(null)
+  const [showToday, setShowToday]     = useState(false)
   const [showMore, setShowMore]       = useState(false)
   const [mapStyle, setMapStyle]       = useState(() => {
     const saved = localStorage.getItem('th_map_style')
@@ -266,6 +276,7 @@ export default function App() {
   // Menu "Plus" rangé par intention : je voyage / je règle la carte / je bidouille
   const moreItems = [
     { header: 'Voyage' },
+    { icon: <CalendarIcon size={17} />, label: "Aujourd'hui", onClick: () => setShowToday(true) },
     { icon: <ScalesIcon size={17} />, label: 'Comparateur voyage', onClick: () => setTripCompare({ stepId: null }) },
     { header: 'Carte' },
     {
@@ -565,6 +576,16 @@ export default function App() {
           <HotelPanel steps={steps} getHotels={getHotels} onClose={() => setShowHotels(false)}
             onFly={(lat, lng) => setFlyTarget({ lat, lng, t: Date.now() })}
             onCompare={(stepId) => { setShowHotels(false); setTripCompare({ stepId: stepId ?? null }) }} />
+        )}
+        {showToday && (
+          <TodayView
+            steps={steps}
+            getSelectedHotel={getSelectedHotel}
+            getSegment={getSegment}
+            isMobile={isMobile}
+            onShowMap={() => setShowToday(false)}
+            onFly={(lat, lng) => setFlyTarget({ lat, lng, zoom: 15, t: Date.now() })}
+          />
         )}
         {showTools && <ExternalToolsPanel onClose={() => setShowTools(false)} />}
       </Suspense>
