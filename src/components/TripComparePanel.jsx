@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { haversineKm } from '../utils/geo'
-import { estimateDuration, formatDuration } from '../data/destinations'
+import { formatDuration } from '../data/destinations'
+import { transportTotals } from '../utils/tripDerive'
 import { ScalesIcon, CloseIcon, CheckIcon, TransportIcon, ExternalIcon, Avatar } from './icons'
 import { USERS } from '../constants'
 
 const USER_COLOR = { Jordan: '#38bdf8', Abbey: '#4ade80' }
-
-const ROUTE_FACTOR = { plane: 1.05, train: 1.4, bus: 1.5, ferry: 1.2, car: 1.3 }
 
 // Comparateur global du voyage : tous les hôtels de toutes les étapes, avec cases à cocher
 // pour composer le panier à comparer. Totaux = hôtels (retenus / moins chers / plus chers
@@ -20,7 +18,7 @@ function loadExcluded(itinId) {
   catch { return new Set() }
 }
 
-export function TripComparePanel({ steps, itinId, getHotels, selectHotel, setUserPick, currentUser, getSegment, initialStepId, isMobile, onClose }) {
+export function TripComparePanel({ steps, mainSteps, excursions = [], itinId, getHotels, selectHotel, setUserPick, currentUser, getSegment, initialStepId, isMobile, onClose }) {
   const [excluded, setExcluded] = useState(() => loadExcluded(itinId))
 
   // Ouverture depuis une étape précise : scroll + mise en avant temporaire de sa section
@@ -67,20 +65,11 @@ export function TripComparePanel({ steps, itinId, getHotels, selectHotel, setUse
 
   const withHotels = sections.filter(s => s.rows.length > 0)
 
-  // Transports (même calcul que BudgetPanel)
-  const transport = useMemo(() => {
-    let price = 0, km = 0, durMin = 0
-    steps.forEach((step, i) => {
-      const prev = steps[i - 1]
-      if (!prev) return
-      const seg = getSegment(prev.id, step.id)
-      const rawKm = haversineKm(prev.lat, prev.lng, step.lat, step.lng)
-      km += Math.round(rawKm * (ROUTE_FACTOR[seg.mode] ?? 1))
-      durMin += seg.duration_override ?? estimateDuration(rawKm, seg.mode)
-      price += seg.price ?? 0
-    })
-    return { price, km, durMin }
-  }, [steps, getSegment])
+  // Transports : étapes principales consécutives + aller-retours d'excursions
+  const transport = useMemo(
+    () => transportTotals(mainSteps ?? steps, excursions, getSegment),
+    [mainSteps, steps, excursions, getSegment]
+  )
 
   const sumChosen = withHotels.reduce((a, s) => a + (s.chosenTotal ?? 0), 0)
   const sumMin = withHotels.reduce((a, s) => a + (s.minTotal ?? 0), 0)

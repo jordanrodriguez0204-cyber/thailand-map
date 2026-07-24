@@ -14,8 +14,8 @@ import { haversineKm } from '../utils/geo'
 import { TRANSPORT_MODES, estimateDuration, formatDuration } from '../data/destinations'
 
 // ── Carte étape épurée ───────────────────────────────────────────────────────
-const SortableItem = memo(function SortableItem({ step, selected, realtimeFlash, onSelect, onEdit }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: step.id })
+const SortableItem = memo(function SortableItem({ step, displayOrdre, sub, subKm, selected, realtimeFlash, onSelect, onEdit }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: step.id, disabled: sub })
   const cat = CATEGORIES[step.categorie] || { color: '#8fa8c4', label: step.categorie }
   const isFlashing = realtimeFlash?.id === step.id
 
@@ -26,12 +26,13 @@ const SortableItem = memo(function SortableItem({ step, selected, realtimeFlash,
         transform: CSS.Transform.toString(transform),
         transition: transition || 'border-color 0.2s, background 0.2s',
         opacity: isDragging ? 0.5 : 1,
-        background: isFlashing ? 'rgba(251,191,36,0.12)' : selected ? 'rgba(56,189,248,0.12)' : '#0a2a52',
+        background: isFlashing ? 'rgba(251,191,36,0.12)' : selected ? 'rgba(56,189,248,0.12)' : sub ? 'rgba(10,42,82,0.6)' : '#0a2a52',
         border: `1.5px solid ${isFlashing ? '#fbbf24' : selected ? '#38bdf8' : 'rgba(56,189,248,0.1)'}`,
-        borderLeft: `3px solid ${cat.color}`,
+        borderLeft: `3px ${sub ? 'dashed' : 'solid'} ${cat.color}`,
         borderRadius: 10,
-        padding: '9px 8px 9px 6px',
+        padding: sub ? '6px 8px 6px 6px' : '9px 8px 9px 6px',
         marginBottom: 3,
+        marginLeft: sub ? 22 : 0,
         cursor: 'pointer',
         display: 'flex',
         gap: 8,
@@ -39,28 +40,33 @@ const SortableItem = memo(function SortableItem({ step, selected, realtimeFlash,
       }}
       onClick={() => onSelect(step.id)}
     >
-      <div
-        {...attributes} {...listeners}
-        style={{ color: '#3a5a8a', fontSize: 14, cursor: 'grab', padding: '0 2px', touchAction: 'none', flexShrink: 0, userSelect: 'none' }}
-      ><GripIcon size={14} /></div>
+      {!sub && (
+        <div
+          {...attributes} {...listeners}
+          style={{ color: '#3a5a8a', fontSize: 14, cursor: 'grab', padding: '0 2px', touchAction: 'none', flexShrink: 0, userSelect: 'none' }}
+        ><GripIcon size={14} /></div>
+      )}
 
       <div style={{
-        width: 30, height: 30, borderRadius: 8,
+        width: sub ? 24 : 30, height: sub ? 24 : 30, borderRadius: 8,
         background: cat.color + '22',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         flexShrink: 0,
       }}>
-        <CategoryIcon category={step.categorie} size={16} color={cat.color} />
+        <CategoryIcon category={step.categorie} size={sub ? 13 : 16} color={cat.color} />
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-          <span style={{ fontSize: 10, fontWeight: 700, color: cat.color }}>{step.ordre}</span>
-          <span style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#e8f4fd' }}>
+          {!sub && <span style={{ fontSize: 10, fontWeight: 700, color: cat.color }}>{displayOrdre}</span>}
+          <span style={{ fontWeight: 600, fontSize: sub ? 12.5 : 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#e8f4fd' }}>
             {step.nom}
           </span>
         </div>
-        <div style={{ fontSize: 11.5, color: '#8fa8c4', marginTop: 1 }}>{step.dates}</div>
+        <div style={{ fontSize: 11.5, color: '#8fa8c4', marginTop: 1 }}>
+          {step.dates}
+          {sub && subKm != null && <span style={{ marginLeft: 6, color: cat.color, fontWeight: 600 }}>⇄ {subKm} km A/R</span>}
+        </div>
       </div>
 
       <button
@@ -74,7 +80,9 @@ const SortableItem = memo(function SortableItem({ step, selected, realtimeFlash,
   prev.realtimeFlash?.id === next.realtimeFlash?.id &&
   prev.step.id === next.step.id &&
   prev.step.nom === next.step.nom &&
-  prev.step.ordre === next.step.ordre &&
+  prev.displayOrdre === next.displayOrdre &&
+  prev.sub === next.sub &&
+  prev.subKm === next.subKm &&
   prev.step.dates === next.step.dates &&
   prev.step.categorie === next.step.categorie
 )
@@ -175,10 +183,10 @@ function SegmentEditor({ seg, from, to, onUpdate }) {
 }
 
 // ── Vue Trajets ──────────────────────────────────────────────────────────────
-function JourneyView({ steps, getSegment, updateSegment }) {
+function JourneyView({ steps, excursions = [], getSegment, updateSegment }) {
   const [openIdx, setOpenIdx] = useState(null)
 
-  if (steps.length < 2) return (
+  if (steps.length < 2 && excursions.length === 0) return (
     <div style={{ textAlign: 'center', color: '#8fa8c4', fontSize: 13, padding: '32px 16px' }}>
       Ajoute au moins 2 étapes pour voir les trajets.
     </div>
@@ -192,6 +200,15 @@ function JourneyView({ steps, getSegment, updateSegment }) {
     const dur = seg.duration_override ?? estimateDuration(km, seg.mode || 'plane')
     return { from, to, seg, km, tm, dur }
   })
+
+  // Legs d'excursion : aller-retour depuis l'étape mère (km et durée ×2)
+  for (const { step, parent } of excursions) {
+    const seg = getSegment ? getSegment(parent.id, step.id) : {}
+    const oneWay = Math.round(haversineKm(parent.lat, parent.lng, step.lat, step.lng))
+    const tm = TRANSPORT_MODES[seg.mode || 'ferry'] || TRANSPORT_MODES.ferry
+    const dur = (seg.duration_override ?? estimateDuration(oneWay, seg.mode || 'ferry')) * 2
+    segments.push({ from: parent, to: step, seg, km: oneWay * 2, tm, dur, roundTrip: true })
+  }
 
   const totalKm = segments.reduce((a, s) => a + s.km, 0)
   const totalPrice = segments.reduce((a, s) => a + (s.seg.price_chf || s.seg.price || 0), 0)
@@ -224,9 +241,11 @@ function JourneyView({ steps, getSegment, updateSegment }) {
             <TransportIcon mode={s.seg.mode || 'plane'} size={17} style={{ color: s.tm.color }} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 600, color: '#e8f4fd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {s.from.nom} → {s.to.nom}
+                {s.from.nom} {s.roundTrip ? '⇄' : '→'} {s.to.nom}
               </div>
-              <div style={{ fontSize: 11.5, color: '#8fa8c4' }}>{s.tm.label} · {s.km} km · {formatDuration(s.dur)}</div>
+              <div style={{ fontSize: 11.5, color: '#8fa8c4' }}>
+                {s.tm.label} · {s.km} km · {formatDuration(s.dur)}{s.roundTrip ? ' · excursion A/R' : ''}
+              </div>
             </div>
             <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
               {(s.seg.price_chf || s.seg.price) > 0 && (
@@ -304,7 +323,7 @@ function Badge({ children, color = 'rgba(255,255,255,0.06)', textColor = '#cfe2f
 }
 
 // ── Composant principal ──────────────────────────────────────────────────────
-export function StepList({ steps, selectedId, onSelect, onEdit, onReorder, filter, onFilterChange, onAdd, realtimeFlash, onUndo, canUndo, getSegment, updateSegment }) {
+export function StepList({ steps, subOf = {}, selectedId, onSelect, onEdit, onReorder, filter, onFilterChange, onAdd, realtimeFlash, onUndo, canUndo, getSegment, updateSegment }) {
   const [view, setView] = useState('steps') // 'steps' | 'journey'
 
   const sensors = useSensors(
@@ -315,11 +334,30 @@ export function StepList({ steps, selectedId, onSelect, onEdit, onReorder, filte
   const categories = [ALL_FILTER, ...new Set(steps.map((s) => s.categorie))]
   const visible = filter === ALL_FILTER ? steps : steps.filter((s) => s.categorie === filter)
 
+  // Structure principale/excursions : les excursions s'affichent indentées sous
+  // leur étape mère et suivent son numéro ; le drag ne concerne que les principales.
+  const byId = new Map(steps.map(s => [s.id, s]))
+  const isSub = (s) => { const p = subOf[s.id] && byId.get(subOf[s.id]); return !!(p && p.id !== s.id && !subOf[p.id]) }
+  const mainVisible = visible.filter(s => !isSub(s))
+  const childrenOf = (id) => visible.filter(s => isSub(s) && subOf[s.id] === id)
+  // Les excursions dont le parent est filtré hors vue restent visibles, en fin de liste
+  const orphans = visible.filter(s => isSub(s) && !mainVisible.some(m => m.id === subOf[s.id]))
+
   function handleDragEnd({ active, over }) {
     if (!over || active.id === over.id) return
-    const from = steps.findIndex((s) => s.id === active.id)
-    const to = steps.findIndex((s) => s.id === over.id)
-    onReorder(arrayMove(steps, from, to))
+    const mains = steps.filter(s => !isSub(s))
+    const from = mains.findIndex((s) => s.id === active.id)
+    const to = mains.findIndex((s) => s.id === over.id)
+    if (from < 0 || to < 0) return
+    // Réordonne les principales puis réinsère chaque excursion après son étape mère
+    const newMains = arrayMove(mains, from, to)
+    const full = []
+    for (const m of newMains) {
+      full.push(m)
+      full.push(...steps.filter(s => isSub(s) && subOf[s.id] === m.id))
+    }
+    for (const s of steps) if (!full.includes(s)) full.push(s)
+    onReorder(full)
   }
 
   return (
@@ -376,24 +414,48 @@ export function StepList({ steps, selectedId, onSelect, onEdit, onReorder, filte
 
           <div style={{ overflowY: 'auto', flex: 1, padding: '8px 10px' }}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={visible.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-                {visible.map((step, i) => (
+              <SortableContext items={mainVisible.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                {mainVisible.map((step, i) => (
                   <div key={step.id}>
                     {i > 0 && getSegment && (
                       <StepConnector
-                        from={visible[i - 1]}
+                        from={mainVisible[i - 1]}
                         to={step}
-                        segment={getSegment(visible[i - 1].id, step.id)}
+                        segment={getSegment(mainVisible[i - 1].id, step.id)}
                       />
                     )}
                     <SortableItem
                       step={step}
+                      displayOrdre={i + 1}
                       selected={selectedId === step.id}
                       realtimeFlash={realtimeFlash}
                       onSelect={onSelect}
                       onEdit={onEdit}
                     />
+                    {childrenOf(step.id).map(exc => (
+                      <SortableItem
+                        key={exc.id}
+                        step={exc}
+                        sub
+                        subKm={Math.round(haversineKm(step.lat, step.lng, exc.lat, exc.lng) * 2)}
+                        selected={selectedId === exc.id}
+                        realtimeFlash={realtimeFlash}
+                        onSelect={onSelect}
+                        onEdit={onEdit}
+                      />
+                    ))}
                   </div>
+                ))}
+                {orphans.map(exc => (
+                  <SortableItem
+                    key={exc.id}
+                    step={exc}
+                    sub
+                    selected={selectedId === exc.id}
+                    realtimeFlash={realtimeFlash}
+                    onSelect={onSelect}
+                    onEdit={onEdit}
+                  />
                 ))}
               </SortableContext>
             </DndContext>
@@ -415,7 +477,12 @@ export function StepList({ steps, selectedId, onSelect, onEdit, onReorder, filte
       {/* ── Vue Trajets ── */}
       {view === 'journey' && (
         <div style={{ overflowY: 'auto', flex: 1 }}>
-          <JourneyView steps={steps} getSegment={getSegment} updateSegment={updateSegment} />
+          <JourneyView
+            steps={steps.filter(s => !isSub(s))}
+            excursions={steps.filter(isSub).map(s => ({ step: s, parent: byId.get(subOf[s.id]) }))}
+            getSegment={getSegment}
+            updateSegment={updateSegment}
+          />
         </div>
       )}
     </div>

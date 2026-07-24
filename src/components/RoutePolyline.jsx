@@ -34,11 +34,27 @@ function ArrowMarker({ at, angle, color }) {
   return <Marker position={at} icon={icon} interactive={false} />
 }
 
-export function RoutePolyline({ steps, getSegment }) {
-  if (steps.length < 2) return null
+// Branche excursion : aller-retour pointillé depuis l'étape mère (pas de flèche,
+// lecture "on part et on revient" — distincte du flux principal du voyage)
+function ExcursionBranch({ parent, step, getSegment }) {
+  const seg = getSegment ? getSegment(parent.id, step.id) : { mode: 'ferry', visible: true }
+  if (seg.visible === false) return null
+  const tm = TRANSPORT_MODES[seg.mode || 'ferry'] || TRANSPORT_MODES.ferry
+  return (
+    <Polyline
+      positions={[[parent.lat, parent.lng], [step.lat, step.lng]]}
+      pathOptions={{ color: tm.color, weight: 2, opacity: 0.5, dashArray: '3 7' }}
+    />
+  )
+}
+
+export function RoutePolyline({ steps, excursions = [], getSegment }) {
   return (
     <>
-      {steps.slice(0, -1).map((from, i) => {
+      {excursions.map(({ step, parent }) => (
+        <ExcursionBranch key={`exc-${step.id}`} parent={parent} step={step} getSegment={getSegment} />
+      ))}
+      {steps.length >= 2 && steps.slice(0, -1).map((from, i) => {
         const to = steps[i + 1]
         const seg = getSegment ? getSegment(from.id, to.id) : { mode: 'plane', visible: true }
         if (!seg.visible) return null

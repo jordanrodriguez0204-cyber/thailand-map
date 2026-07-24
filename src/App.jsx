@@ -33,6 +33,8 @@ import { CategoryIcon, TargetIcon, BedIcon, WalletIcon, DotsIcon, MenuIcon, Clos
   DownloadIcon, UploadIcon, WifiOffIcon, ScalesIcon, CalendarIcon, EyeIcon, Avatar, Spinner } from './components/icons'
 import { exportBackup, importBackup } from './utils/backup'
 import { isDuringTrip } from './utils/tripDates'
+import { useSubDestinations } from './hooks/useSubDestinations'
+import { splitSteps } from './utils/tripDerive'
 import { METRO_LINES } from './data/bangkokMetro'
 import { isSupabaseReady } from './lib/supabase'
 
@@ -171,6 +173,7 @@ export default function App() {
   const { itineraries, activeItinId, create: createItin, switchTo: switchItin, rename: renameItin, remove: removeItin } = useItineraries()
   const { steps, loading, online, realtimeFlash, addStep, updateStep, deleteStep, reorderSteps, undo, canUndo, copyStepsTo, deleteItinerarySteps, getAllStepsForCompare } = useSteps(user, activeItinId)
   const { getSegment, updateSegment } = useSegments(activeItinId)
+  const { subOf, setParent } = useSubDestinations(activeItinId)
   const { getHotels, getSelectedHotel, addHotel, updateHotel, deleteHotel, selectHotel, setUserPick } = useBudget(activeItinId)
   const { getActivities, addActivity, toggleActivity, removeActivity } = useActivities(activeItinId)
 
@@ -246,6 +249,11 @@ export default function App() {
 
   const visible = filter === ALL_FILTER ? steps : steps.filter((s) => s.categorie === filter)
 
+  // Étapes principales (numérotées, trajet principal) vs excursions à la journée
+  const { mainSteps, excursions } = splitSteps(steps, subOf)
+  const visibleMain = mainSteps.filter(s => visible.includes(s))
+  const visibleExcursions = excursions.filter(e => visible.includes(e.step))
+
   function handleMarkerClick(step) {
     setSelectedId(step.id); setPopupStep(step); setFlyStep(step)
   }
@@ -257,7 +265,11 @@ export default function App() {
     if (window.innerWidth < 700) setSidebarOpen(false)
   }
 
-  function handleAdd(step)        { addStep(step);           showToast('Étape ajoutée', 'success') }
+  async function handleAdd(step, parentId) {
+    const created = await addStep(step)
+    if (parentId && created?.id) setParent(created.id, parentId)
+    showToast(parentId ? 'Excursion ajoutée' : 'Étape ajoutée', 'success')
+  }
   function handleUpdate(id, ch)   { updateStep(id, ch);      showToast('Étape modifiée', 'success') }
   function handleDelete(id)       { deleteStep(id);          showToast('Étape supprimée', 'info') }
   function handleUndo()           { undo();                  showToast('Action annulée', 'warning') }
@@ -363,6 +375,7 @@ export default function App() {
         />
         <StepList
           steps={steps}
+          subOf={subOf}
           selectedId={selectedId}
           onSelect={handleSidebarSelect}
           onEdit={(s) => setEditStep(s)}
@@ -494,7 +507,7 @@ export default function App() {
             <ScaleControl />
             <ZoomWatcher onZoom={setMapZoom} />
             <ZoomControls isMobile={isMobile} />
-            {showRoute && <RoutePolyline steps={visible} getSegment={getSegment} />}
+            {showRoute && <RoutePolyline steps={visibleMain} excursions={visibleExcursions} getSegment={getSegment} />}
             {visible.map((step) => (
               <StepMarker
                 key={step.id}
@@ -567,12 +580,14 @@ export default function App() {
           />
         )}
         {showBudget && (
-          <BudgetPanel steps={steps} itinId={activeItinId} getSegment={getSegment} getHotel={getSelectedHotel} onClose={() => setShowBudget(false)}
+          <BudgetPanel steps={mainSteps} excursions={excursions} itinId={activeItinId} getSegment={getSegment} getHotel={getSelectedHotel} onClose={() => setShowBudget(false)}
             onOpenCompare={() => { setShowBudget(false); setTripCompare({ stepId: null }) }} />
         )}
         {tripCompare && (
           <TripComparePanel
             steps={steps}
+            mainSteps={mainSteps}
+            excursions={excursions}
             itinId={activeItinId}
             getHotels={getHotels}
             selectHotel={selectHotel}
@@ -592,6 +607,7 @@ export default function App() {
         {showToday && (
           <TodayView
             steps={steps}
+            subOf={subOf}
             getSelectedHotel={getSelectedHotel}
             getSegment={getSegment}
             isMobile={isMobile}
@@ -605,9 +621,12 @@ export default function App() {
       </Suspense>
       {editStep && (
         <EditStepModal step={editStep} onSave={(ch) => handleUpdate(editStep.id, ch)}
-          onDelete={() => handleDelete(editStep.id)} onClose={() => setEditStep(null)} />
+          onDelete={() => handleDelete(editStep.id)} onClose={() => setEditStep(null)}
+          parentOptions={mainSteps.filter(s => s.id !== editStep.id)}
+          parentId={subOf[editStep.id] || null}
+          onParentChange={(pid) => setParent(editStep.id, pid)} />
       )}
-      {showAdd && <AddStepModal onAdd={handleAdd} onClose={() => setShowAdd(false)} />}
+      {showAdd && <AddStepModal onAdd={handleAdd} onClose={() => setShowAdd(false)} parentOptions={mainSteps} />}
       {toast && <Toast message={toast.msg} type={toast.type} />}
       <input
         id="backup-file-input"

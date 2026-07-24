@@ -3,11 +3,12 @@ import { useState } from 'react'
 import { geocodeNominatim } from '../utils/geo'
 import { CATEGORIES } from '../constants'
 
-export function AddStepModal({ onAdd, onClose }) {
+export function AddStepModal({ onAdd, onClose, parentOptions = [] }) {
   const [nom, setNom] = useState('')
   const [dates, setDates] = useState('')
   const [notes, setNotes] = useState('')
   const [categorie, setCategorie] = useState('ville')
+  const [parentId, setParentId] = useState('')
   const [lat, setLat] = useState('')
   const [lng, setLng] = useState('')
   const [searching, setSearching] = useState(false)
@@ -37,7 +38,7 @@ export function AddStepModal({ onAdd, onClose }) {
   function handleSubmit(e) {
     e.preventDefault()
     if (!nom.trim() || !lat || !lng) { setError('Nom et coordonnées requis.'); return }
-    onAdd({ nom: nom.trim(), lat: parseFloat(lat), lng: parseFloat(lng), dates, notes, categorie })
+    onAdd({ nom: nom.trim(), lat: parseFloat(lat), lng: parseFloat(lng), dates, notes, categorie }, parentId || null)
     onClose()
   }
 
@@ -72,6 +73,21 @@ export function AddStepModal({ onAdd, onClose }) {
           <Field label="Longitude *"><input style={input} value={lng} onChange={(e) => setLng(e.target.value)} placeholder="100.5018" /></Field>
         </div>
 
+        {parentOptions.length > 0 && (
+          <Field label="Type">
+            <select style={input} value={parentId} onChange={(e) => setParentId(e.target.value)}>
+              <option value="">Étape du voyage (numérotée)</option>
+              {parentOptions.map(p => (
+                <option key={p.id} value={p.id}>Excursion à la journée depuis {p.nom}</option>
+              ))}
+            </select>
+            {parentId && (
+              <div style={{ fontSize: 11, color: '#8fa8c4', marginTop: 3 }}>
+                Hors numérotation du voyage — trajet aller-retour depuis l'étape mère, modifiable dans l'onglet Trajets.
+              </div>
+            )}
+          </Field>
+        )}
         <Field label="Dates"><input style={input} value={dates} onChange={(e) => setDates(e.target.value)} placeholder="ex: 9-11 août" /></Field>
 
         <Field label="Catégorie">

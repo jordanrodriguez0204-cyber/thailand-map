@@ -121,6 +121,7 @@ export function useSteps(currentUser, itinId = 'default') {
       const next = [...localItinSteps, newStep]
       setLocalItinSteps(next); saveLocalItin(itinId, next)
     }
+    return newStep
   }
 
   async function updateStep(id, changes) {

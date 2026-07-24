@@ -3,10 +3,11 @@ import { WalletIcon, CloseIcon, TransportIcon, ScalesIcon, PencilIcon } from './
 import { haversineKm } from '../utils/geo'
 import { TRANSPORT_MODES, estimateDuration, formatDuration } from '../data/destinations'
 import { useBudgetTarget } from '../hooks/useBudgetTarget'
+import { excursionLeg } from '../utils/tripDerive'
 
 const ROUTE_FACTOR = { plane: 1.05, train: 1.4, bus: 1.5, ferry: 1.2, car: 1.3 }
 
-export function BudgetPanel({ steps, itinId, getSegment, getHotel, onClose, onOpenCompare }) {
+export function BudgetPanel({ steps, excursions = [], itinId, getSegment, getHotel, onClose, onOpenCompare }) {
   const { target, setTarget } = useBudgetTarget(itinId)
   const rows = steps.map((step, i) => {
     const prev = steps[i - 1]
@@ -26,10 +27,19 @@ export function BudgetPanel({ steps, itinId, getSegment, getHotel, onClose, onOp
     return { step, hotel, hotelTotal, km, durMin, transportPrice, mode }
   })
 
-  const totalKm = rows.reduce((a, r) => a + r.km, 0)
-  const totalDurMin = rows.reduce((a, r) => a + r.durMin, 0)
-  const totalHotel = rows.reduce((a, r) => a + r.hotelTotal, 0)
-  const totalTransport = rows.reduce((a, r) => a + r.transportPrice, 0)
+  // Excursions à la journée : trajet aller-retour depuis l'étape mère
+  const excRows = excursions.map(({ step, parent }) => {
+    const leg = excursionLeg(parent, step, getSegment)
+    const hotel = getHotel(step.id) || {}
+    const hotelTotal = (hotel.price_per_night && hotel.nights) ? hotel.price_per_night * hotel.nights : 0
+    return { step, parent, hotel, hotelTotal, km: leg.km, durMin: leg.durMin, transportPrice: leg.price, mode: leg.mode }
+  })
+
+  const all = [...rows, ...excRows]
+  const totalKm = all.reduce((a, r) => a + r.km, 0)
+  const totalDurMin = all.reduce((a, r) => a + r.durMin, 0)
+  const totalHotel = all.reduce((a, r) => a + r.hotelTotal, 0)
+  const totalTransport = all.reduce((a, r) => a + r.transportPrice, 0)
   const grandTotal = totalHotel + totalTransport
 
   return (
@@ -63,15 +73,26 @@ export function BudgetPanel({ steps, itinId, getSegment, getHotel, onClose, onOp
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ step, hotel, hotelTotal, km, durMin, transportPrice, mode }, i) => {
+              {rows.flatMap(({ step, hotel, hotelTotal, km, durMin, transportPrice, mode }, i) => {
+                const mine = excRows.filter(e => e.parent.id === step.id)
+                const orphansTail = i === rows.length - 1 ? excRows.filter(e => !rows.some(r => r.step.id === e.parent.id)) : []
+                return [
+                  { key: step.id, step, hotel, hotelTotal, km, durMin, transportPrice, mode, showTransport: i > 0, exc: false },
+                  ...mine.map(e => ({ key: e.step.id, ...e, showTransport: true, exc: true })),
+                  ...orphansTail.map(e => ({ key: e.step.id, ...e, showTransport: true, exc: true })),
+                ]
+              }).map(({ key, step, hotel, hotelTotal, km, durMin, transportPrice, mode, showTransport, exc }) => {
                 const tm = mode ? TRANSPORT_MODES[mode] : null
-                const rowTotal = hotelTotal + (i > 0 ? transportPrice : 0)
+                const rowTotal = hotelTotal + (showTransport ? transportPrice : 0)
                 return (
-                  <tr key={step.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                  <tr key={key} style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                     <td style={td}>
-                      <div style={{ fontWeight: 600 }}>{step.nom}</div>
+                      <div style={{ fontWeight: 600, paddingLeft: exc ? 14 : 0, color: exc ? '#cfe2f5' : undefined }}>
+                        {exc ? '⇄ ' : ''}{step.nom}
+                        {exc && <span style={{ fontSize: 10, color: '#8fa8c4', fontWeight: 500, marginLeft: 5 }}>excursion A/R</span>}
+                      </div>
                       {hotel.name && (
-                        <div style={{ fontSize: 11, color: '#8fa8c4' }}>
+                        <div style={{ fontSize: 11, color: '#8fa8c4', paddingLeft: exc ? 14 : 0 }}>
                           {hotel.name}{hotel.nights ? ` · ${hotel.nights}n` : ''}
                           <span style={{ marginLeft: 6, fontWeight: 700, color: hotel.booked ? '#4ade80' : '#fbbf24' }}>
                             {hotel.booked ? '✓ réservé' : 'à réserver'}
@@ -82,9 +103,9 @@ export function BudgetPanel({ steps, itinId, getSegment, getHotel, onClose, onOp
                     <td style={{ ...td, textAlign: 'center' }}>
                       {tm ? <span title={tm.label} style={{ display: 'inline-flex', color: tm.color }}><TransportIcon mode={mode} size={14} /></span> : '—'}
                     </td>
-                    <td style={{ ...td, textAlign: 'right', color: '#8fa8c4' }}>{i > 0 ? km : '—'}</td>
-                    <td style={{ ...td, textAlign: 'right', color: '#8fa8c4' }}>{i > 0 ? formatDuration(durMin) : '—'}</td>
-                    <td style={{ ...td, textAlign: 'right' }}>{i > 0 && transportPrice > 0 ? `${transportPrice} CHF` : '—'}</td>
+                    <td style={{ ...td, textAlign: 'right', color: '#8fa8c4' }}>{showTransport ? km : '—'}</td>
+                    <td style={{ ...td, textAlign: 'right', color: '#8fa8c4' }}>{showTransport ? formatDuration(durMin) : '—'}</td>
+                    <td style={{ ...td, textAlign: 'right' }}>{showTransport && transportPrice > 0 ? `${transportPrice} CHF` : '—'}</td>
                     <td style={{ ...td, textAlign: 'right' }}>{hotelTotal > 0 ? `${hotelTotal} CHF` : '—'}</td>
                     <td style={{ ...td, textAlign: 'right', fontWeight: 600, color: rowTotal > 0 ? '#e8f4fd' : '#8fa8c4' }}>
                       {rowTotal > 0 ? `${rowTotal} CHF` : '—'}
@@ -120,7 +141,7 @@ export function BudgetPanel({ steps, itinId, getSegment, getHotel, onClose, onOp
 
         {/* Reste à réserver — les hôtels retenus pas encore réservés */}
         {(() => {
-          const pending = rows.filter(r => r.hotel.name && !r.hotel.booked)
+          const pending = all.filter(r => r.hotel.name && !r.hotel.booked)
           if (pending.length === 0) return null
           return (
             <div style={{

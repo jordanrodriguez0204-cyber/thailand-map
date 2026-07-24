@@ -15,6 +15,8 @@ App de voyage Thaïlande (août 2026) fonctionnelle et déployée : itinéraire 
 - **2026-07-24** — Comparateur : mode **A/B Jordan vs Abbey** — puces J/A par hôtel (`favs` sur l'hôtel, synchro cloud, un choix par personne et par étape), cartes "Sélection Jordan/Abbey" (choix perso, sinon ★), compteur d'accord/désaccord par étape.
 - **2026-07-24** — Nouveau **Comparateur du voyage** (`TripComparePanel.jsx`) : tous les hôtels de toutes les étapes avec cases à cocher (panier de comparaison, persisté par appareil dans `th_trip_compare_excl_${itinId}`), ★ retenu partagé avec le Budget, totaux transports + scénarios hôtels (retenus / moins chers / plus chers cochés). Accès : menu "Plus" et bouton dans le panneau Budget. Corrigé au passage la prop `style` dupliquée de BudgetPanel.
 
+- **2026-07-24** — **Sous-destinations** : une étape peut être rattachée comme « excursion à la journée » à une étape mère (sélecteur Type dans Ajouter/Modifier). Hors numérotation, trajet A/R pointillé éditable, ligne Budget dédiée, hôtel de l'étape mère dans Aujourd'hui. Stockage `th_subdest_${itinId}` (cloud, pas de migration Supabase). Ang Thong Marine Park rattachée à Koh Samui (ferry) en données réelles.
+
 ## Leçon apprise — incident maplibre v5 (juillet 2026)
 
 Symptôme : carte vide en prod. Le build embarquait maplibre-gl **v5**, incompatible avec `@maplibre/maplibre-gl-leaflet` : style.json, tiles.json et polices chargent (200) mais **aucune tuile `.pbf` n'est demandée**. Résolution : épingler `maplibre-gl@^4.7.1` (v4) et redéployer sans cache de build. La clé MapTiler n'a jamais été en cause (elle sert vecteur ET satellite).

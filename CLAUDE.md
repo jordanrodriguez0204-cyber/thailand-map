@@ -72,6 +72,13 @@ App React 18 + Vite 5 + react-leaflet 4 + Supabase + Vercel PWA
 - `MoreMenu` dans App.jsx, alimenté par le tableau `moreItems`, rangé en sections `{ header: 'Voyage' | 'Carte' | 'Système' }` — règle : **aucun nouveau bouton de premier niveau**, toute nouveauté rejoint une section du menu Plus ou un panneau existant
 - Indicateur hors-ligne : `OfflinePill` dans le titre (desktop) et la barre du haut (mobile)
 
+### Sous-destinations (excursions à la journée)
+- Relation `{ stepId: parentStepId }` dans `useSubDestinations` (`th_subdest_${itinId}`, localStorage + cloud — **pas** de colonne Supabase)
+- Dérivés via `src/utils/tripDerive.js` : `splitSteps` (principales vs excursions), `excursionLeg` (A/R : km/durée ×2, prix tel que saisi), `transportTotals`
+- Rattachement : sélecteur « Type » dans AddStepModal/EditStepModal (`parentOptions`, `onParentChange`)
+- Effets : hors numérotation (sidebar indentée, ⇄ km A/R), trajet principal saute l'excursion, branche pointillée sur la carte, leg ⇄ éditable dans Trajets, ligne dédiée dans Budget, hôtel de l'étape mère dans la vue Aujourd'hui
+- Garde-fous dans `splitSteps` : parent inexistant ou lui-même excursion → l'étape redevient principale
+
 ### Transport & distances
 - `src/data/destinations.js` — `TRANSPORT_MODES`, `FACTOR`, `SPEED`, `OVERHEAD`, `estimateDuration(rawKm, mode)`
 - `ROUTE_FACTOR` dans BudgetPanel : plane×1.05, train×1.4, bus×1.5, ferry×1.2, car×1.3

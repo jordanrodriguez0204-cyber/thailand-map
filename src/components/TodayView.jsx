@@ -16,11 +16,15 @@ function mapsUrl(hotel) {
   return `https://www.google.com/maps/search/?api=1&query=${q}`
 }
 
-export function TodayView({ steps, getSelectedHotel, getSegment, onShowMap, onFly, isMobile, date = new Date() }) {
+export function TodayView({ steps, subOf = {}, getSelectedHotel, getSegment, onShowMap, onFly, isMobile, date = new Date() }) {
   const today = stepForDate(steps, date)
   const next = nextStepAfter(steps, date)
   const window_ = tripWindow(steps)
-  const hotel = today ? getSelectedHotel(today.id) : null
+  // Jour d'excursion : on dort à l'étape mère → son hôtel prime si l'excursion n'en a pas
+  const excParent = today && subOf[today.id] ? steps.find(s => s.id === subOf[today.id]) : null
+  const ownHotel = today ? getSelectedHotel(today.id) : null
+  const hotel = ownHotel?.name ? ownHotel : (excParent ? getSelectedHotel(excParent.id) : ownHotel)
+  const hotelFromParent = !ownHotel?.name && excParent && hotel?.name
   const seg = today && next ? getSegment(today.id, next.id) : null
   const nextDates = next ? parseStepDates(next.dates) : null
   const tm = seg?.mode ? TRANSPORT_MODES[seg.mode] : null
@@ -75,7 +79,10 @@ export function TodayView({ steps, getSelectedHotel, getSegment, onShowMap, onFl
               <CategoryIcon category={today.categorie} size={26} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 17, fontWeight: 800, color: '#e8f4fd' }}>{today.nom}</div>
-                <div style={{ fontSize: 12, color: '#8fa8c4' }}>{today.dates}</div>
+                <div style={{ fontSize: 12, color: '#8fa8c4' }}>
+                  {today.dates}
+                  {excParent && <span style={{ color: '#fbbf24', fontWeight: 600 }}> · excursion depuis {excParent.nom}</span>}
+                </div>
               </div>
             </div>
             {today.notes && (
@@ -86,7 +93,7 @@ export function TodayView({ steps, getSelectedHotel, getSegment, onShowMap, onFl
 
         {/* Hôtel du jour */}
         {today && (
-          <Card title={<><BedIcon size={14} style={{ color: '#4ade80' }} /> Hôtel</>}>
+          <Card title={<><BedIcon size={14} style={{ color: '#4ade80' }} /> Hôtel{hotelFromParent ? ` — à ${excParent.nom}` : ''}</>}>
             {hotel?.name ? (
               <>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
