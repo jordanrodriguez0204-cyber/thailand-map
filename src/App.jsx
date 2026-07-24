@@ -21,6 +21,7 @@ import { ZoomControls } from './components/MapControls'
 const HotelPanel = lazy(() => import('./components/HotelPanel').then(m => ({ default: m.HotelPanel })))
 const TripComparePanel = lazy(() => import('./components/TripComparePanel').then(m => ({ default: m.TripComparePanel })))
 const TodayView = lazy(() => import('./components/TodayView').then(m => ({ default: m.TodayView })))
+const HelpGuide = lazy(() => import('./components/HelpGuide').then(m => ({ default: m.HelpGuide })))
 import { useActivities } from './hooks/useActivities'
 import { useItineraries } from './hooks/useItineraries'
 import { ItineraryBar } from './components/ItineraryBar'
@@ -28,7 +29,7 @@ const ExternalToolsPanel = lazy(() => import('./components/ExternalToolsPanel').
 import { STORAGE_KEYS, ALL_FILTER, CATEGORIES } from './constants'
 import { CategoryIcon, TargetIcon, BedIcon, WalletIcon, DotsIcon, MenuIcon, CloseIcon,
   CityIcon, RouteIcon, MetroIcon, MapIcon, LinkIcon, MoonIcon, SatelliteIcon, SunIcon,
-  DownloadIcon, UploadIcon, WifiOffIcon, ScalesIcon, CalendarIcon, Avatar, Spinner } from './components/icons'
+  DownloadIcon, UploadIcon, WifiOffIcon, ScalesIcon, CalendarIcon, EyeIcon, Avatar, Spinner } from './components/icons'
 import { exportBackup, importBackup } from './utils/backup'
 import { isDuringTrip } from './utils/tripDates'
 import { METRO_LINES } from './data/bangkokMetro'
@@ -193,6 +194,13 @@ export default function App() {
   // Comparateur unique du voyage — null | { stepId: string|null } (stepId = étape à mettre en avant)
   const [tripCompare, setTripCompare] = useState(null)
   const [showToday, setShowToday]     = useState(false)
+  // Guide 30s : s'ouvre tout seul à la première connexion d'Abbey (jamais pour Jordan),
+  // reste accessible pour tout le monde via Plus → Système
+  const [showGuide, setShowGuide]     = useState(false)
+  useEffect(() => {
+    if (authed && user === 'Abbey' && !localStorage.getItem(`th_guide_seen_${user}`)) setShowGuide(true)
+  }, [authed, user])
+  const closeGuide = () => { if (user) localStorage.setItem(`th_guide_seen_${user}`, '1'); setShowGuide(false) }
   const [showMore, setShowMore]       = useState(false)
   const [mapStyle, setMapStyle]       = useState(() => {
     const saved = localStorage.getItem('th_map_style')
@@ -293,6 +301,7 @@ export default function App() {
     { icon: <CityIcon size={17} />, label: 'Bangkok BTS/MRT', onClick: () => { flyBangkok(); setShowTransit(true) } },
     { icon: <MapIcon size={17} />, label: 'Villes', onClick: () => setShowCityMenu(true) },
     { header: 'Système' },
+    { icon: <EyeIcon size={17} />, label: "Guide de l'appli", onClick: () => setShowGuide(true) },
     { icon: <LinkIcon size={17} />, label: 'Outils utiles', onClick: () => setShowTools(true) },
     {
       icon: <DownloadIcon size={17} />, label: 'Exporter la sauvegarde',
@@ -587,6 +596,7 @@ export default function App() {
             onFly={(lat, lng) => setFlyTarget({ lat, lng, zoom: 15, t: Date.now() })}
           />
         )}
+        {showGuide && <HelpGuide isMobile={isMobile} onClose={closeGuide} />}
         {showTools && <ExternalToolsPanel onClose={() => setShowTools(false)} />}
       </Suspense>
       {editStep && (
