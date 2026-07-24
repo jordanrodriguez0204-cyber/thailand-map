@@ -1,10 +1,10 @@
-import { WalletIcon, CloseIcon, TransportIcon } from './icons'
+import { WalletIcon, CloseIcon, TransportIcon, ScalesIcon } from './icons'
 import { haversineKm } from '../utils/geo'
 import { TRANSPORT_MODES, estimateDuration, formatDuration } from '../data/destinations'
 
 const ROUTE_FACTOR = { plane: 1.05, train: 1.4, bus: 1.5, ferry: 1.2, car: 1.3 }
 
-export function BudgetPanel({ steps, getSegment, getHotel, onClose }) {
+export function BudgetPanel({ steps, getSegment, getHotel, onClose, onOpenCompare }) {
   const rows = steps.map((step, i) => {
     const prev = steps[i - 1]
     const hotel = getHotel(step.id) || {}
@@ -33,8 +33,17 @@ export function BudgetPanel({ steps, getSegment, getHotel, onClose }) {
     <div style={overlay} onClick={onClose}>
       <div style={panel} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700 }} style={{ margin: 0, fontSize: 17, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}><WalletIcon size={18} style={{ color: '#38bdf8' }} />Budget du voyage</h2>
-          <button onClick={onClose} style={closeBtn}><CloseIcon size={15} /></button>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 8 }}><WalletIcon size={18} style={{ color: '#38bdf8' }} />Budget du voyage</h2>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            {onOpenCompare && (
+              <button onClick={onOpenCompare} style={{
+                background: 'rgba(56,189,248,0.12)', color: '#7dd3fc', border: 'none', borderRadius: 8,
+                padding: '7px 11px', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', gap: 6,
+              }}><ScalesIcon size={13} />Comparateur</button>
+            )}
+            <button onClick={onClose} style={closeBtn}><CloseIcon size={15} /></button>
+          </div>
         </div>
 
         <div style={{ overflowX: 'auto' }}>

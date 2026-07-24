@@ -20,6 +20,7 @@ import { MetroLegend } from './components/MetroLegend'
 import { ZoomControls } from './components/MapControls'
 const HotelPanel = lazy(() => import('./components/HotelPanel').then(m => ({ default: m.HotelPanel })))
 const HotelComparePanel = lazy(() => import('./components/HotelComparePanel').then(m => ({ default: m.HotelComparePanel })))
+const TripComparePanel = lazy(() => import('./components/TripComparePanel').then(m => ({ default: m.TripComparePanel })))
 import { useActivities } from './hooks/useActivities'
 import { useItineraries } from './hooks/useItineraries'
 import { ItineraryBar } from './components/ItineraryBar'
@@ -27,7 +28,7 @@ const ExternalToolsPanel = lazy(() => import('./components/ExternalToolsPanel').
 import { STORAGE_KEYS, ALL_FILTER, CATEGORIES } from './constants'
 import { CategoryIcon, TargetIcon, BedIcon, WalletIcon, DotsIcon, MenuIcon, CloseIcon,
   CityIcon, RouteIcon, MetroIcon, MapIcon, LinkIcon, MoonIcon, SatelliteIcon, SunIcon,
-  DownloadIcon, UploadIcon, WifiOffIcon, Avatar, Spinner } from './components/icons'
+  DownloadIcon, UploadIcon, WifiOffIcon, ScalesIcon, Avatar, Spinner } from './components/icons'
 import { exportBackup, importBackup } from './utils/backup'
 import { METRO_LINES } from './data/bangkokMetro'
 import { isSupabaseReady } from './lib/supabase'
@@ -181,6 +182,7 @@ export default function App() {
   const [showRoute, setShowRoute]     = useState(true)
   const [showBudget, setShowBudget]   = useState(false)
   const [showHotels, setShowHotels]   = useState(false)
+  const [showTripCompare, setShowTripCompare] = useState(false)
   const [hotelCompare, setHotelCompare] = useState(null) // null | { stepId: string|null }
   const [showMore, setShowMore]       = useState(false)
   const [mapStyle, setMapStyle]       = useState(() => {
@@ -263,6 +265,7 @@ export default function App() {
 
   // Actions secondaires regroupées derrière "Plus" (desktop + mobile)
   const moreItems = [
+    { icon: <ScalesIcon size={17} />, label: 'Comparateur voyage', onClick: () => setShowTripCompare(true) },
     { icon: <CityIcon size={17} />, label: 'Bangkok BTS/MRT', onClick: () => { flyBangkok(); setShowTransit(true) } },
     { icon: <RouteIcon size={17} />, label: 'Trajet', toggle: true, active: showRoute, onClick: () => setShowRoute(v => !v) },
     { icon: <MetroIcon size={17} />, label: 'Métro Bangkok', toggle: true, active: showTransit, onClick: () => setShowTransit(v => !v) },
@@ -538,7 +541,19 @@ export default function App() {
           />
         )}
         {showBudget && (
-          <BudgetPanel steps={steps} getSegment={getSegment} getHotel={getSelectedHotel} onClose={() => setShowBudget(false)} />
+          <BudgetPanel steps={steps} getSegment={getSegment} getHotel={getSelectedHotel} onClose={() => setShowBudget(false)}
+            onOpenCompare={() => { setShowBudget(false); setShowTripCompare(true) }} />
+        )}
+        {showTripCompare && (
+          <TripComparePanel
+            steps={steps}
+            itinId={activeItinId}
+            getHotels={getHotels}
+            selectHotel={selectHotel}
+            getSegment={getSegment}
+            isMobile={isMobile}
+            onClose={() => setShowTripCompare(false)}
+          />
         )}
         {showHotels && (
           <HotelPanel steps={steps} getHotels={getHotels} onClose={() => setShowHotels(false)}
