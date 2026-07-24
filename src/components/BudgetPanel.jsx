@@ -1,10 +1,13 @@
-import { WalletIcon, CloseIcon, TransportIcon, ScalesIcon } from './icons'
+import { useState } from 'react'
+import { WalletIcon, CloseIcon, TransportIcon, ScalesIcon, PencilIcon } from './icons'
 import { haversineKm } from '../utils/geo'
 import { TRANSPORT_MODES, estimateDuration, formatDuration } from '../data/destinations'
+import { useBudgetTarget } from '../hooks/useBudgetTarget'
 
 const ROUTE_FACTOR = { plane: 1.05, train: 1.4, bus: 1.5, ferry: 1.2, car: 1.3 }
 
-export function BudgetPanel({ steps, getSegment, getHotel, onClose, onOpenCompare }) {
+export function BudgetPanel({ steps, itinId, getSegment, getHotel, onClose, onOpenCompare }) {
+  const { target, setTarget } = useBudgetTarget(itinId)
   const rows = steps.map((step, i) => {
     const prev = steps[i - 1]
     const hotel = getHotel(step.id) || {}
@@ -112,6 +115,9 @@ export function BudgetPanel({ steps, getSegment, getHotel, onClose, onOpenCompar
           </div>
         )}
 
+        {/* Budget cible + jauge engagé/restant */}
+        <BudgetGauge engaged={grandTotal} target={target} onSetTarget={setTarget} />
+
         {/* Reste à réserver — les hôtels retenus pas encore réservés */}
         {(() => {
           const pending = rows.filter(r => r.hotel.name && !r.hotel.booked)
@@ -134,6 +140,69 @@ export function BudgetPanel({ steps, getSegment, getHotel, onClose, onOpenCompar
             </div>
           )
         })()}
+      </div>
+    </div>
+  )
+}
+
+function BudgetGauge({ engaged, target, onSetTarget }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(target ?? '')
+
+  function commit() {
+    onSetTarget(draft ? +draft : null)
+    setEditing(false)
+  }
+
+  if (!target && !editing) return (
+    <button onClick={() => { setDraft(''); setEditing(true) }} style={{
+      marginTop: 14, width: '100%', background: 'rgba(56,189,248,0.08)', border: '1px dashed rgba(56,189,248,0.35)',
+      borderRadius: 10, padding: '10px 14px', fontSize: 12.5, fontWeight: 600, color: '#7dd3fc', cursor: 'pointer',
+    }}>+ Définir un budget cible (enveloppe max du voyage)</button>
+  )
+
+  if (editing) return (
+    <div style={{ marginTop: 14, display: 'flex', gap: 8, alignItems: 'center' }}>
+      <input
+        type="number" min="0" autoFocus placeholder="Ex: 3500"
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false) }}
+        style={{
+          flex: 1, minHeight: 38, borderRadius: 10, border: '1.5px solid rgba(56,189,248,0.3)',
+          background: '#061528', color: '#e8f4fd', fontSize: 14, fontWeight: 600, padding: '0 12px',
+        }}
+      />
+      <span style={{ fontSize: 13, color: '#8fa8c4', fontWeight: 600 }}>CHF</span>
+      <button onClick={commit} style={{
+        background: '#38bdf8', color: '#0d1f3c', border: 'none', borderRadius: 10,
+        padding: '9px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+      }}>OK</button>
+    </div>
+  )
+
+  const ratio = target > 0 ? engaged / target : 0
+  const pct = Math.min(100, Math.round(ratio * 100))
+  const color = ratio < 0.75 ? '#4ade80' : ratio <= 0.95 ? '#fbbf24' : '#f87171'
+  const remaining = target - engaged
+
+  return (
+    <div style={{ marginTop: 14, background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '10px 14px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: '#e8f4fd' }}>
+          {engaged.toLocaleString('fr-FR')} / {target.toLocaleString('fr-FR')} CHF engagés
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color }}>
+            {remaining >= 0 ? `reste ${remaining.toLocaleString('fr-FR')} CHF` : `dépassé de ${Math.abs(remaining).toLocaleString('fr-FR')} CHF`}
+          </span>
+          <button onClick={() => { setDraft(target); setEditing(true) }} title="Modifier le budget cible" style={{
+            background: 'none', border: 'none', color: '#8fa8c4', cursor: 'pointer', padding: 2, display: 'flex',
+          }}><PencilIcon size={12} /></button>
+        </span>
+      </div>
+      <div style={{ height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', borderRadius: 4, background: color, transition: 'width 0.4s ease, background 0.4s ease' }} />
       </div>
     </div>
   )

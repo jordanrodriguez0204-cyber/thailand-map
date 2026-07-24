@@ -544,7 +544,7 @@ export default function App() {
           />
         )}
         {showBudget && (
-          <BudgetPanel steps={steps} getSegment={getSegment} getHotel={getSelectedHotel} onClose={() => setShowBudget(false)}
+          <BudgetPanel steps={steps} itinId={activeItinId} getSegment={getSegment} getHotel={getSelectedHotel} onClose={() => setShowBudget(false)}
             onOpenCompare={() => { setShowBudget(false); setTripCompare({ stepId: null }) }} />
         )}
         {tripCompare && (
