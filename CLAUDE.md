@@ -31,8 +31,11 @@ App React 18 + Vite 5 + react-leaflet 4 + Supabase + Vercel PWA
 - `src/components/MetroWidget.jsx` — 3-4 stations BTS/MRT les plus proches via OSRM piéton
 - `src/components/ExternalToolsPanel.jsx` — drawer outils externes (Windy, 12Go, Agoda…) via `createPortal`
 - `src/components/WeatherBadge.jsx` — météo Open-Meteo 7 jours
-- `src/components/HotelComparePanel.jsx` — comparaison d'hôtels par étape + inter-itinéraires (✓ vert sur meilleur prix/note/distance). Accès : HotelPanel "⚖️ Comparer", HotelsTab, ⚖️ par étape
-- `src/components/ComparePanel.jsx` — comparaison d'**itinéraires** (distinct de HotelComparePanel)
+- `src/components/TripComparePanel.jsx` — **comparateur unique du voyage** : tous les hôtels par étape, cases à cocher (panier par appareil, `th_trip_compare_excl_${itinId}`), ★ retenu (= budget), pastilles J/A = choix perso par personne (`favs` sur l'hôtel, sync cloud), scénarios Jordan/Abbey + accord/désaccord. Accès : Plus → Voyage, bouton dans BudgetPanel, "⚖️ Comparer" (HotelPanel/HotelsTab, ouvre scrollé sur l'étape via `initialStepId`)
+- `src/components/ComparePanel.jsx` — comparaison d'**itinéraires** (distinct du comparateur d'hôtels)
+- `src/components/TodayView.jsx` — vue « Aujourd'hui » : étape du jour, hôtel retenu (adresse, Google Maps, Booking), prochain déplacement, météo. Auto-affichée 1×/session pendant le voyage (`isDuringTrip`), accès Plus → Voyage. Parsing des dates : `src/utils/tripDates.js` (`TRIP_YEAR = 2026`)
+- `src/components/HelpGuide.jsx` — guide « 30 secondes » ; auto à la 1ʳᵉ connexion d'Abbey (`th_guide_seen_${user}`), accès Plus → Système
+- `src/components/CurrencyConverter.jsx` — convertisseur CHF⇄THB (open.er-api.com, cache 12h `th_fx_chf_thb`, fallback hors-ligne)
 
 ### Import Booking.com
 - `api/booking.js` — fonction serverless Vercel : parse JSON-LD/OG d'une page Booking → `{name, lat, lng, address, photo_url, rating}`
@@ -66,7 +69,7 @@ App React 18 + Vite 5 + react-leaflet 4 + Supabase + Vercel PWA
 ### UI carte (barres d'actions)
 - Desktop : MapBtn avec labels — Recentrer / Hôtels / Budget visibles + menu "Plus" (dropdown) pour Bangkok BTS/MRT, Trajet, Métro Bangkok, Villes, Outils utiles
 - Mobile : barre du bas 4 items (Recentrer/Hôtels/Budget/Plus), zones tactiles ≥44px, "Plus" = bottom sheet ; `env(safe-area-inset-bottom)` géré
-- `MoreMenu` dans App.jsx, alimenté par le tableau `moreItems`
+- `MoreMenu` dans App.jsx, alimenté par le tableau `moreItems`, rangé en sections `{ header: 'Voyage' | 'Carte' | 'Système' }` — règle : **aucun nouveau bouton de premier niveau**, toute nouveauté rejoint une section du menu Plus ou un panneau existant
 - Indicateur hors-ligne : `OfflinePill` dans le titre (desktop) et la barre du haut (mobile)
 
 ### Transport & distances
@@ -80,7 +83,8 @@ App React 18 + Vite 5 + react-leaflet 4 + Supabase + Vercel PWA
 
 ### Conventions importantes
 - Sidebar : `position: relative` sur desktop → MapContainer est déjà réduit en width. Ne pas ajouter sidebarWidth dans paddingTopLeft de flyToBounds
-- Multi-hôtels : `hotels[stepId]` est un tableau. Le premier ou celui avec `selected: true` est le budget retenu (`getSelectedHotel`)
+- Multi-hôtels : `hotels[stepId]` est un tableau. Le premier ou celui avec `selected: true` est le budget retenu (`getSelectedHotel`). Champs de suivi : `booked` (réservé, encadré « Reste à réserver » dans BudgetPanel), `favs: {Jordan, Abbey}` (choix perso A/B, `setUserPick`)
+- Budget cible : `useBudgetTarget(itinId)` (`th_budget_target_${itinId}`, sync cloud), jauge dans BudgetPanel
 - Géocodage : Nominatim avec stratégies fallback (voir `doGeocode` dans StepPopup)
 - OSRM piéton : endpoint principal = `routing.openstreetmap.de/routed-foot` (supporte foot), fallback `router.project-osrm.org`
 
