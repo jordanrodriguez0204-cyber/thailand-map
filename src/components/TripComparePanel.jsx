@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { haversineKm } from '../utils/geo'
 import { estimateDuration, formatDuration } from '../data/destinations'
@@ -20,8 +20,18 @@ function loadExcluded(itinId) {
   catch { return new Set() }
 }
 
-export function TripComparePanel({ steps, itinId, getHotels, selectHotel, setUserPick, currentUser, getSegment, isMobile, onClose }) {
+export function TripComparePanel({ steps, itinId, getHotels, selectHotel, setUserPick, currentUser, getSegment, initialStepId, isMobile, onClose }) {
   const [excluded, setExcluded] = useState(() => loadExcluded(itinId))
+
+  // Ouverture depuis une étape précise : scroll + mise en avant temporaire de sa section
+  const sectionRefs = useRef({})
+  const [highlightId, setHighlightId] = useState(initialStepId || null)
+  useEffect(() => {
+    if (!initialStepId) return
+    sectionRefs.current[initialStepId]?.scrollIntoView({ block: 'start' })
+    const t = setTimeout(() => setHighlightId(null), 1800)
+    return () => clearTimeout(t)
+  }, [initialStepId])
 
   function toggle(hotelId) {
     setExcluded(prev => {
@@ -137,7 +147,15 @@ export function TripComparePanel({ steps, itinId, getHotels, selectHotel, setUse
             </div>
           )}
           {withHotels.map(({ step, rows, minTotal }) => (
-            <div key={step.id} style={{ marginBottom: 14 }}>
+            <div
+              key={step.id}
+              ref={el => { sectionRefs.current[step.id] = el }}
+              style={{
+                marginBottom: 14, borderRadius: 10, scrollMarginTop: 8,
+                background: highlightId === step.id ? 'rgba(56,189,248,0.08)' : 'transparent',
+                transition: 'background 0.6s ease',
+              }}
+            >
               <div style={{
                 display: 'flex', alignItems: 'baseline', gap: 8, padding: '6px 2px 4px',
                 borderBottom: '1px solid rgba(56,189,248,0.15)', marginBottom: 6,

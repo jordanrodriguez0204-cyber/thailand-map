@@ -19,7 +19,6 @@ import { MetroLayer } from './components/MetroLayer'
 import { MetroLegend } from './components/MetroLegend'
 import { ZoomControls } from './components/MapControls'
 const HotelPanel = lazy(() => import('./components/HotelPanel').then(m => ({ default: m.HotelPanel })))
-const HotelComparePanel = lazy(() => import('./components/HotelComparePanel').then(m => ({ default: m.HotelComparePanel })))
 const TripComparePanel = lazy(() => import('./components/TripComparePanel').then(m => ({ default: m.TripComparePanel })))
 import { useActivities } from './hooks/useActivities'
 import { useItineraries } from './hooks/useItineraries'
@@ -182,8 +181,8 @@ export default function App() {
   const [showRoute, setShowRoute]     = useState(true)
   const [showBudget, setShowBudget]   = useState(false)
   const [showHotels, setShowHotels]   = useState(false)
-  const [showTripCompare, setShowTripCompare] = useState(false)
-  const [hotelCompare, setHotelCompare] = useState(null) // null | { stepId: string|null }
+  // Comparateur unique du voyage — null | { stepId: string|null } (stepId = étape à mettre en avant)
+  const [tripCompare, setTripCompare] = useState(null)
   const [showMore, setShowMore]       = useState(false)
   const [mapStyle, setMapStyle]       = useState(() => {
     const saved = localStorage.getItem('th_map_style')
@@ -264,13 +263,11 @@ export default function App() {
   const flyBangkok = () => setFlyTarget({ lat: 13.745, lng: 100.515, zoom: 13, t: Date.now() })
 
   // Actions secondaires regroupées derrière "Plus" (desktop + mobile)
+  // Menu "Plus" rangé par intention : je voyage / je règle la carte / je bidouille
   const moreItems = [
-    { icon: <ScalesIcon size={17} />, label: 'Comparateur voyage', onClick: () => setShowTripCompare(true) },
-    { icon: <CityIcon size={17} />, label: 'Bangkok BTS/MRT', onClick: () => { flyBangkok(); setShowTransit(true) } },
-    { icon: <RouteIcon size={17} />, label: 'Trajet', toggle: true, active: showRoute, onClick: () => setShowRoute(v => !v) },
-    { icon: <MetroIcon size={17} />, label: 'Métro Bangkok', toggle: true, active: showTransit, onClick: () => setShowTransit(v => !v) },
-    { icon: <MapIcon size={17} />, label: 'Villes', onClick: () => setShowCityMenu(true) },
-    { icon: <LinkIcon size={17} />, label: 'Outils utiles', onClick: () => setShowTools(true) },
+    { header: 'Voyage' },
+    { icon: <ScalesIcon size={17} />, label: 'Comparateur voyage', onClick: () => setTripCompare({ stepId: null }) },
+    { header: 'Carte' },
     {
       // Sélecteur 3 états — les trois styles visibles d'un coup d'œil
       custom: (
@@ -280,6 +277,12 @@ export default function App() {
         />
       ),
     },
+    { icon: <RouteIcon size={17} />, label: 'Trajet', toggle: true, active: showRoute, onClick: () => setShowRoute(v => !v) },
+    { icon: <MetroIcon size={17} />, label: 'Métro Bangkok', toggle: true, active: showTransit, onClick: () => setShowTransit(v => !v) },
+    { icon: <CityIcon size={17} />, label: 'Bangkok BTS/MRT', onClick: () => { flyBangkok(); setShowTransit(true) } },
+    { icon: <MapIcon size={17} />, label: 'Villes', onClick: () => setShowCityMenu(true) },
+    { header: 'Système' },
+    { icon: <LinkIcon size={17} />, label: 'Outils utiles', onClick: () => setShowTools(true) },
     {
       icon: <DownloadIcon size={17} />, label: 'Exporter la sauvegarde',
       onClick: () => {
@@ -537,14 +540,14 @@ export default function App() {
             removeActivity={removeActivity}
             onFlyTo={(lat, lng) => setFlyTarget({ lat, lng, zoom: 16, t: Date.now() })}
             onToast={showToast}
-            onCompareHotels={(stepId) => { setPopupStep(null); setHotelCompare({ stepId }) }}
+            onCompareHotels={(stepId) => { setPopupStep(null); setTripCompare({ stepId }) }}
           />
         )}
         {showBudget && (
           <BudgetPanel steps={steps} getSegment={getSegment} getHotel={getSelectedHotel} onClose={() => setShowBudget(false)}
-            onOpenCompare={() => { setShowBudget(false); setShowTripCompare(true) }} />
+            onOpenCompare={() => { setShowBudget(false); setTripCompare({ stepId: null }) }} />
         )}
-        {showTripCompare && (
+        {tripCompare && (
           <TripComparePanel
             steps={steps}
             itinId={activeItinId}
@@ -553,27 +556,15 @@ export default function App() {
             setUserPick={setUserPick}
             currentUser={user}
             getSegment={getSegment}
+            initialStepId={tripCompare.stepId}
             isMobile={isMobile}
-            onClose={() => setShowTripCompare(false)}
+            onClose={() => setTripCompare(null)}
           />
         )}
         {showHotels && (
           <HotelPanel steps={steps} getHotels={getHotels} onClose={() => setShowHotels(false)}
             onFly={(lat, lng) => setFlyTarget({ lat, lng, t: Date.now() })}
-            onCompare={(stepId) => { setShowHotels(false); setHotelCompare({ stepId: stepId ?? null }) }} />
-        )}
-        {hotelCompare && (
-          <HotelComparePanel
-            steps={steps}
-            activeItin={activeItin || { id: activeItinId, name: 'Itinéraire', color: '#38bdf8' }}
-            itineraries={itineraries}
-            getAllStepsForCompare={getAllStepsForCompare}
-            getHotels={getHotels}
-            initialStepId={hotelCompare.stepId}
-            isMobile={isMobile}
-            onClose={() => setHotelCompare(null)}
-            onFly={(lat, lng) => setFlyTarget({ lat, lng, zoom: 15, t: Date.now() })}
-          />
+            onCompare={(stepId) => { setShowHotels(false); setTripCompare({ stepId: stepId ?? null }) }} />
         )}
         {showTools && <ExternalToolsPanel onClose={() => setShowTools(false)} />}
       </Suspense>
@@ -701,10 +692,7 @@ function MapStyleSelector({ value, onChange }) {
     { key: 'satellite', label: 'Satellite', icon: <SatelliteIcon size={15} /> },
   ]
   return (
-    <div style={{ padding: '6px 12px 8px' }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#8fa8c4', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 6 }}>
-        Style de carte
-      </div>
+    <div style={{ padding: '4px 12px 8px' }}>
       <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: 3 }}>
         {options.map(o => {
           const active = value === o.key
@@ -732,7 +720,12 @@ function MapStyleSelector({ value, onChange }) {
 
 // Menu "Plus" — dropdown sur desktop, bottom sheet sur mobile
 function MoreMenu({ isMobile, items, onClose }) {
-  const row = (item, i) => item.custom ? (
+  const row = (item, i) => item.header ? (
+    <div key={`header-${i}`} style={{
+      fontSize: 10, fontWeight: 700, color: '#8fa8c4', textTransform: 'uppercase', letterSpacing: 0.6,
+      padding: i === 0 ? '4px 12px 2px' : '12px 12px 2px',
+    }}>{item.header}</div>
+  ) : item.custom ? (
     <div key={`custom-${i}`}>{item.custom}</div>
   ) : (
     <button
