@@ -5,6 +5,7 @@ const EMPTY = {
   name: '', price_per_night: null, nights: null, address: '',
   lat: null, lng: null, geocoded_name: '',
   booking_url: null, photo_url: null, rating: null, source: 'manual',
+  favs: {}, // { Jordan: true, Abbey: true } — choix perso par personne (comparateur A/B)
 }
 
 function key(itinId) { return `th_budget_${itinId}` }
@@ -98,5 +99,16 @@ export function useBudget(itinId = 'default') {
     })
   }, [itinId])
 
-  return { getHotels, getSelectedHotel, addHotel, updateHotel, deleteHotel, selectHotel }
+  // Choix perso : un hôtel max par personne et par étape ; re-cliquer désélectionne
+  const setUserPick = useCallback((stepId, hotelId, user) => {
+    setData(prev => {
+      const list = (prev[stepId] || []).map(h => ({
+        ...h,
+        favs: { ...(h.favs || {}), [user]: h.id === hotelId ? !(h.favs || {})[user] : false },
+      }))
+      return persist({ ...prev, [stepId]: list })
+    })
+  }, [itinId])
+
+  return { getHotels, getSelectedHotel, addHotel, updateHotel, deleteHotel, selectHotel, setUserPick }
 }

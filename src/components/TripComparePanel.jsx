@@ -2,7 +2,10 @@ import { useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { haversineKm } from '../utils/geo'
 import { estimateDuration, formatDuration } from '../data/destinations'
-import { ScalesIcon, CloseIcon, CheckIcon, TransportIcon, ExternalIcon } from './icons'
+import { ScalesIcon, CloseIcon, CheckIcon, TransportIcon, ExternalIcon, Avatar } from './icons'
+import { USERS } from '../constants'
+
+const USER_COLOR = { Jordan: '#38bdf8', Abbey: '#4ade80' }
 
 const ROUTE_FACTOR = { plane: 1.05, train: 1.4, bus: 1.5, ferry: 1.2, car: 1.3 }
 
@@ -17,7 +20,7 @@ function loadExcluded(itinId) {
   catch { return new Set() }
 }
 
-export function TripComparePanel({ steps, itinId, getHotels, selectHotel, getSegment, isMobile, onClose }) {
+export function TripComparePanel({ steps, itinId, getHotels, selectHotel, setUserPick, currentUser, getSegment, isMobile, onClose }) {
   const [excluded, setExcluded] = useState(() => loadExcluded(itinId))
 
   function toggle(hotelId) {
@@ -75,6 +78,25 @@ export function TripComparePanel({ steps, itinId, getHotels, selectHotel, getSeg
   const noPrice = withHotels.filter(s => s.minTotal == null).length
   const noHotel = sections.length - withHotels.length
 
+  // Scénarios par personne : son choix perso, sinon le ★ retenu de l'étape
+  const scenarios = USERS.map(u => {
+    let total = 0, picks = 0
+    for (const s of withHotels) {
+      const pick = s.rows.find(r => r.favs?.[u])
+      if (pick) { picks++; total += pick.total ?? 0 }
+      else total += s.chosenTotal ?? 0
+    }
+    return { user: u, total, picks }
+  })
+  const agree = withHotels.filter(s => {
+    const picks = USERS.map(u => s.rows.find(r => r.favs?.[u])?.id)
+    return picks.every(Boolean) && new Set(picks).size === 1
+  }).length
+  const disagree = withHotels.filter(s => {
+    const picks = USERS.map(u => s.rows.find(r => r.favs?.[u])?.id)
+    return picks.every(Boolean) && new Set(picks).size > 1
+  }).length
+
   const fmt = v => v > 0 ? `${Math.round(v).toLocaleString('fr-FR')} CHF` : '—'
 
   return createPortal(
@@ -92,7 +114,7 @@ export function TripComparePanel({ steps, itinId, getHotels, selectHotel, getSeg
               <ScalesIcon size={17} style={{ color: '#38bdf8' }} />Comparateur du voyage
             </div>
             <div style={{ fontSize: 11, color: '#8fa8c4', marginTop: 2 }}>
-              Coche les hôtels à comparer · ★ = retenu pour le budget
+              Coche les hôtels à comparer · ★ = retenu pour le budget · J/A = le choix de chacun
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
@@ -156,6 +178,25 @@ export function TripComparePanel({ steps, itinId, getHotels, selectHotel, getSeg
                       {h.total != null ? fmt(h.total) : '—'}
                       {winner && <CheckIcon size={11} style={{ marginLeft: 4, verticalAlign: -1 }} />}
                     </span>
+                    {USERS.map(u => {
+                      const active = !!h.favs?.[u]
+                      const c = USER_COLOR[u] || '#8fa8c4'
+                      return (
+                        <button
+                          key={u}
+                          onClick={() => setUserPick(step.id, h.id, u)}
+                          title={`Choix de ${u}${u === currentUser ? ' (toi)' : ''}`}
+                          style={{
+                            border: active ? `1.5px solid ${c}` : '1.5px solid transparent',
+                            borderRadius: 7, cursor: 'pointer', flexShrink: 0, padding: 0,
+                            width: isMobile ? 40 : 30, height: isMobile ? 40 : 26,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            background: active ? c + '22' : 'rgba(255,255,255,0.04)',
+                            opacity: active ? 1 : 0.55,
+                          }}
+                        ><Avatar name={u} size={16} /></button>
+                      )
+                    })}
                     <button
                       onClick={() => selectHotel(step.id, h.id)}
                       title={h.selected ? 'Retenu pour le budget' : 'Retenir pour le budget'}
@@ -195,16 +236,23 @@ export function TripComparePanel({ steps, itinId, getHotels, selectHotel, getSeg
                 color="#f87171" />
               <Stat label="Hôtels retenus (★)" value={fmt(sumChosen)}
                 sub={`Total voyage ${fmt(sumChosen + transport.price)}`} color="#38bdf8" bold />
-              <Stat label="Si les moins chers cochés" value={fmt(sumMin)}
-                sub={sumChosen > 0 && sumMin > 0 && sumChosen !== sumMin ? `économie ${fmt(sumChosen - sumMin)}` : ' '} color="#4ade80" />
-              <Stat label="Si les plus chers cochés" value={fmt(sumMax)} sub=" " color="#fbbf24" />
+              {scenarios.map(({ user, total, picks }) => (
+                <Stat
+                  key={user}
+                  label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Avatar name={user} size={13} />Sélection {user}</span>}
+                  value={fmt(total)}
+                  sub={picks > 0 ? `${picks} choix perso · reste = ★` : 'aucun choix perso (= ★)'}
+                  color={USER_COLOR[user] || '#8fa8c4'}
+                />
+              ))}
             </div>
-            {(noPrice > 0 || noHotel > 0) && (
-              <div style={{ fontSize: 11, color: '#8fa8c4', marginTop: 8 }}>
-                {noPrice > 0 && `${noPrice} étape${noPrice > 1 ? 's' : ''} avec hôtels cochés sans prix. `}
-                {noHotel > 0 && `${noHotel} étape${noHotel > 1 ? 's' : ''} sans hôtel.`}
-              </div>
-            )}
+            <div style={{ fontSize: 11, color: '#8fa8c4', marginTop: 8 }}>
+              Fourchette des cochés : {fmt(sumMin)} – {fmt(sumMax)}
+              {sumChosen > 0 && sumMin > 0 && sumChosen > sumMin && ` · économie possible ${fmt(sumChosen - sumMin)}`}
+              {(agree > 0 || disagree > 0) && ` · vous êtes d'accord sur ${agree} étape${agree > 1 ? 's' : ''}${disagree > 0 ? `, à départager sur ${disagree}` : ''}`}
+              {noPrice > 0 && ` · ${noPrice} étape${noPrice > 1 ? 's' : ''} sans prix`}
+              {noHotel > 0 && ` · ${noHotel} étape${noHotel > 1 ? 's' : ''} sans hôtel`}
+            </div>
           </div>
         )}
       </div>

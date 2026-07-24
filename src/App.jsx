@@ -168,7 +168,7 @@ export default function App() {
   const { itineraries, activeItinId, activeItin, create: createItin, switchTo: switchItin, rename: renameItin, remove: removeItin } = useItineraries()
   const { steps, loading, online, realtimeFlash, addStep, updateStep, deleteStep, reorderSteps, undo, canUndo, copyStepsTo, deleteItinerarySteps, getAllStepsForCompare } = useSteps(user, activeItinId)
   const { getSegment, updateSegment } = useSegments(activeItinId)
-  const { getHotels, getSelectedHotel, addHotel, updateHotel, deleteHotel, selectHotel } = useBudget(activeItinId)
+  const { getHotels, getSelectedHotel, addHotel, updateHotel, deleteHotel, selectHotel, setUserPick } = useBudget(activeItinId)
   const { getActivities, addActivity, toggleActivity, removeActivity } = useActivities(activeItinId)
 
   const [selectedId, setSelectedId]   = useState(null)
@@ -550,6 +550,8 @@ export default function App() {
             itinId={activeItinId}
             getHotels={getHotels}
             selectHotel={selectHotel}
+            setUserPick={setUserPick}
+            currentUser={user}
             getSegment={getSegment}
             isMobile={isMobile}
             onClose={() => setShowTripCompare(false)}

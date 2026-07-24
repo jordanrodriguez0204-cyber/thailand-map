@@ -11,6 +11,7 @@ App de voyage Thaïlande (août 2026) fonctionnelle et déployée : itinéraire 
 - **2026-07-16** — Création de l'app (carte Leaflet, étapes, tuiles CARTO Voyager). Commits `45ce58b`, `5d0c547`, `4d4d81c`.
 - **2026-07-21** — Grosse journée : app complète (`936f439`), import Booking + comparaison d'hôtels (`ec3a1d2`), sync cloud + sauvegarde JSON + carte sombre (`3e1a473`), styles MapTiler custom "Thailand Day/Night" + refonte UI icônes (`859a08b`, `e944f95`).
 - **2026-07-24** — Budget : prix total du séjour en plus du prix/nuit (`852110c`). Audit santé du code (Claude Code) : build OK, pas de conflits/fichiers cassés, uniquement des warnings lint mineurs. Vérification carte : tuiles vectorielles `.pbf` + satellite `hybrid` OK en dev et en prod. Redéploiement sans cache.
+- **2026-07-24** — Comparateur : mode **A/B Jordan vs Abbey** — puces J/A par hôtel (`favs` sur l'hôtel, synchro cloud, un choix par personne et par étape), cartes "Sélection Jordan/Abbey" (choix perso, sinon ★), compteur d'accord/désaccord par étape.
 - **2026-07-24** — Nouveau **Comparateur du voyage** (`TripComparePanel.jsx`) : tous les hôtels de toutes les étapes avec cases à cocher (panier de comparaison, persisté par appareil dans `th_trip_compare_excl_${itinId}`), ★ retenu partagé avec le Budget, totaux transports + scénarios hôtels (retenus / moins chers / plus chers cochés). Accès : menu "Plus" et bouton dans le panneau Budget. Corrigé au passage la prop `style` dupliquée de BudgetPanel.
 
 ## Leçon apprise — incident maplibre v5 (juillet 2026)
