@@ -22,6 +22,7 @@ const HotelPanel = lazy(() => import('./components/HotelPanel').then(m => ({ def
 const TripComparePanel = lazy(() => import('./components/TripComparePanel').then(m => ({ default: m.TripComparePanel })))
 const TodayView = lazy(() => import('./components/TodayView').then(m => ({ default: m.TodayView })))
 const HelpGuide = lazy(() => import('./components/HelpGuide').then(m => ({ default: m.HelpGuide })))
+const CurrencyConverter = lazy(() => import('./components/CurrencyConverter').then(m => ({ default: m.CurrencyConverter })))
 import { useActivities } from './hooks/useActivities'
 import { useItineraries } from './hooks/useItineraries'
 import { ItineraryBar } from './components/ItineraryBar'
@@ -201,6 +202,7 @@ export default function App() {
     if (authed && user === 'Abbey' && !localStorage.getItem(`th_guide_seen_${user}`)) setShowGuide(true)
   }, [authed, user])
   const closeGuide = () => { if (user) localStorage.setItem(`th_guide_seen_${user}`, '1'); setShowGuide(false) }
+  const [showFx, setShowFx]           = useState(false)
   const [showMore, setShowMore]       = useState(false)
   const [mapStyle, setMapStyle]       = useState(() => {
     const saved = localStorage.getItem('th_map_style')
@@ -286,6 +288,7 @@ export default function App() {
     { header: 'Voyage' },
     { icon: <CalendarIcon size={17} />, label: "Aujourd'hui", onClick: () => setShowToday(true) },
     { icon: <ScalesIcon size={17} />, label: 'Comparateur voyage', onClick: () => setTripCompare({ stepId: null }) },
+    { icon: <WalletIcon size={17} />, label: 'Convertisseur CHF⇄THB', onClick: () => setShowFx(true) },
     { header: 'Carte' },
     {
       // Sélecteur 3 états — les trois styles visibles d'un coup d'œil
@@ -597,6 +600,7 @@ export default function App() {
           />
         )}
         {showGuide && <HelpGuide isMobile={isMobile} onClose={closeGuide} />}
+        {showFx && <CurrencyConverter isMobile={isMobile} onClose={() => setShowFx(false)} />}
         {showTools && <ExternalToolsPanel onClose={() => setShowTools(false)} />}
       </Suspense>
       {editStep && (
