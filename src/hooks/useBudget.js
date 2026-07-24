@@ -6,6 +6,7 @@ const EMPTY = {
   lat: null, lng: null, geocoded_name: '',
   booking_url: null, photo_url: null, rating: null, source: 'manual',
   favs: {}, // { Jordan: true, Abbey: true } — choix perso par personne (comparateur A/B)
+  booked: false, // réservation effectuée (suivi « Reste à réserver »)
 }
 
 function key(itinId) { return `th_budget_${itinId}` }

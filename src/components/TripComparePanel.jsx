@@ -184,6 +184,7 @@ export function TripComparePanel({ steps, itinId, getHotels, selectHotel, setUse
                         {h.name || <span style={{ color: '#8fa8c4', fontStyle: 'italic' }}>Sans nom</span>}
                       </span>
                       <span style={{ fontSize: 11, color: '#8fa8c4', marginLeft: 6 }}>
+                        {h.booked && <span style={{ color: '#4ade80', fontWeight: 700 }}>✓ réservé&nbsp;&nbsp;</span>}
                         {h.rating != null && <span style={{ color: '#fbbf24', fontWeight: 700 }}>★ {h.rating}&nbsp;&nbsp;</span>}
                         {h.price_per_night > 0 ? `${h.price_per_night} CHF/n` : 'prix ?'}
                         {h.nights > 0 ? ` · ${h.nights}n` : ''}

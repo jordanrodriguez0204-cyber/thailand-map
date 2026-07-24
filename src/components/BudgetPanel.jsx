@@ -67,7 +67,14 @@ export function BudgetPanel({ steps, getSegment, getHotel, onClose, onOpenCompar
                   <tr key={step.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
                     <td style={td}>
                       <div style={{ fontWeight: 600 }}>{step.nom}</div>
-                      {hotel.name && <div style={{ fontSize: 11, color: '#8fa8c4' }}>{hotel.name}{hotel.nights ? ` · ${hotel.nights}n` : ''}</div>}
+                      {hotel.name && (
+                        <div style={{ fontSize: 11, color: '#8fa8c4' }}>
+                          {hotel.name}{hotel.nights ? ` · ${hotel.nights}n` : ''}
+                          <span style={{ marginLeft: 6, fontWeight: 700, color: hotel.booked ? '#4ade80' : '#fbbf24' }}>
+                            {hotel.booked ? '✓ réservé' : 'à réserver'}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td style={{ ...td, textAlign: 'center' }}>
                       {tm ? <span title={tm.label} style={{ display: 'inline-flex', color: tm.color }}><TransportIcon mode={mode} size={14} /></span> : '—'}
@@ -104,6 +111,29 @@ export function BudgetPanel({ steps, getSegment, getHotel, onClose, onOpenCompar
             <StatCard label="Budget total" value={`${grandTotal} CHF`} color="#38bdf8" bold />
           </div>
         )}
+
+        {/* Reste à réserver — les hôtels retenus pas encore réservés */}
+        {(() => {
+          const pending = rows.filter(r => r.hotel.name && !r.hotel.booked)
+          if (pending.length === 0) return null
+          return (
+            <div style={{
+              marginTop: 14, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)',
+              borderRadius: 10, padding: '10px 14px',
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24', marginBottom: 4 }}>
+                Reste à réserver ({pending.length})
+              </div>
+              <div style={{ fontSize: 12, color: '#cfe2f5', lineHeight: 1.7 }}>
+                {pending.map(r => (
+                  <div key={r.step.id}>
+                    {r.step.nom} — {r.hotel.name}{r.hotelTotal > 0 ? ` (${r.hotelTotal} CHF)` : ''}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        })()}
       </div>
     </div>
   )

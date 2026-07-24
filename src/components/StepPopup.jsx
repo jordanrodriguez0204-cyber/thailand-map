@@ -452,6 +452,15 @@ function HotelCard({ hotel, index, stepNom, isOnly, onUpdate, onDelete, onSelect
             <span style={{ fontSize: 10, background: 'rgba(251,191,36,0.15)', color: '#fbbf24', borderRadius: 5, padding: '2px 6px', fontWeight: 700 }}>★ {hotel.rating}</span>
           )}
         </span>
+        <button
+          onClick={e => { e.stopPropagation(); onUpdate({ booked: !hotel.booked }) }}
+          title={hotel.booked ? 'Marquer comme non réservé' : 'Marquer comme réservé'}
+          style={{
+            fontSize: 10.5, fontWeight: 700, border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer',
+            background: hotel.booked ? 'rgba(74,222,128,0.18)' : 'rgba(255,255,255,0.08)',
+            color: hotel.booked ? '#4ade80' : '#8fa8c4',
+          }}
+        >{hotel.booked ? '✓ Réservé' : 'À réserver'}</button>
         {!hotel.selected && (
           <button onClick={e => { e.stopPropagation(); onSelect() }} style={{ fontSize: 11, background: '#38bdf8', color: '#0d1f3c', border: 'none', borderRadius: 6, padding: '3px 8px', cursor: 'pointer', fontWeight: 600 }}>
             Choisir
