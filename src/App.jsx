@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import { useSteps } from './hooks/useSteps'
 import { useSegments } from './hooks/useSegments'
 import { useBudget } from './hooks/useBudget'
+import VectorTileLayer from './components/VectorTileLayer'
 import { StepMarker } from './components/StepMarker'
 import { RoutePolyline } from './components/RoutePolyline'
 const StepPopup = lazy(() => import('./components/StepPopup').then(m => ({ default: m.StepPopup })))
@@ -453,13 +454,10 @@ export default function App() {
                 zoomOffset={-1}
               />
             ) : (
-              <TileLayer
+              <VectorTileLayer
                 key={mapStyle}
                 attribution='<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap</a>'
-                url={`https://api.maptiler.com/maps/${mapStyle === 'dark' ? '019f8656-f0dd-7192-9db3-2f9435c134e8' : '019f8657-e8bc-7c21-9f71-8034cab3c3bc'}/{z}/{x}/{y}.png?key=${import.meta.env.VITE_MAPTILER_KEY}`}
-                maxZoom={20}
-                tileSize={512}
-                zoomOffset={-1}
+                styleUrl={`https://api.maptiler.com/maps/${mapStyle === 'dark' ? '019f8656-f0dd-7192-9db3-2f9435c134e8' : '019f8657-e8bc-7c21-9f71-8034cab3c3bc'}/style.json?key=${import.meta.env.VITE_MAPTILER_KEY}`}
               />
             )}
             {showTransit && <MetroLayer visibleLines={visibleLines} />}

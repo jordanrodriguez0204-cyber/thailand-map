@@ -54,8 +54,9 @@ App React 18 + Vite 5 + react-leaflet 4 + Supabase + Vercel PWA
 ### Styles de carte (3 états)
 - `mapStyle` dans App.jsx : `'light' | 'dark' | 'satellite'`, persisté `th_map_style` (migration auto depuis `th_dark_map`)
 - Bouton cyclique dans le menu "Plus" : light → dark → satellite → light
-- Sombre = MapTiler `dataviz-dark` (minimaliste, fait pour données par-dessus) ; clair = `streets-v2` ; satellite = `hybrid` (.jpg)
-- TOUTES les tuiles en 512px retina : tileSize 512 + zoomOffset −1
+- Sombre = style MapTiler custom "Thailand Night" (`019f8656-…`) ; clair = custom "Thailand Day" (`019f8657-…`) ; satellite = `hybrid` (.jpg, raster)
+- Styles custom rendus en **vectoriel** via `VectorTileLayer.jsx` (maplibre-gl + @maplibre/maplibre-gl-leaflet) — le plan Free MapTiler ne sert pas de tuiles raster PNG pour les styles custom (403). ⚠️ maplibre-gl doit rester en v4 (v5 incompatible avec le plugin Leaflet : aucune tuile demandée)
+- Satellite en 512px retina : tileSize 512 + zoomOffset −1
 - Échelle km : `ScaleControl` (L.control.scale) bas-gauche, stylée dans index.css
 - Vols = arcs quadratiques incurvés (`arcPositions` dans RoutePolyline) ; autres modes = lignes droites
 - Markers compacts (22px sans badge) quand zoom < 7.2 et non sélectionnés (`compact` prop + `ZoomWatcher`)

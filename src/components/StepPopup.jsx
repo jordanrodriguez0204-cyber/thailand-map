@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useDebounce } from '../hooks/useDebounce'
 import { haversineKm } from '../utils/geo'
 import { CATEGORIES } from '../constants'
@@ -306,7 +306,54 @@ function HotelCard({ hotel, index, stepNom, isOnly, onUpdate, onDelete, onSelect
   const [importErr, setImportErr] = useState(null)
   const debouncedName = useDebounce(localName)
   const debouncedAddress = useDebounce(localAddress)
-  const total = hotel.price_per_night && hotel.nights ? hotel.price_per_night * hotel.nights : null
+
+  // Prix total du séjour — champ éditable, synchronisé avec price_per_night × nights.
+  // On garde price_per_night + nights comme champs canoniques (budget, comparaisons).
+  const [totalStr, setTotalStr] = useState(
+    hotel.price_per_night && hotel.nights ? String(Math.round(hotel.price_per_night * hotel.nights * 100) / 100) : ''
+  )
+  const editingTotalRef = useRef(false)  // évite que l'effet écrase la saisie en cours
+  const lastEditRef = useRef('pernight') // 'pernight' | 'total' — quel champ est "sticky" si les nuits changent
+
+  // Recalcule le total affiché quand prix/nuit ou nuits changent depuis l'extérieur
+  // (édition prix/nuit, import Booking, sync cloud…). Ignoré pendant la frappe du total.
+  useEffect(() => {
+    if (editingTotalRef.current) return
+    const t = hotel.price_per_night && hotel.nights ? hotel.price_per_night * hotel.nights : null
+    setTotalStr(t != null ? String(Math.round(t * 100) / 100) : '')
+  }, [hotel.price_per_night, hotel.nights])
+
+  const totalNum = totalStr ? +totalStr : (hotel.price_per_night && hotel.nights ? hotel.price_per_night * hotel.nights : null)
+
+  function handleNightsChange(e) {
+    const n = e.target.value ? +e.target.value : null
+    // Si l'utilisateur a saisi un total, on le garde fixe et on recalcule le prix/nuit
+    if (lastEditRef.current === 'total' && totalStr && n) {
+      onUpdate({ nights: n, price_per_night: Math.round((+totalStr / n) * 100) / 100 })
+    } else {
+      onUpdate({ nights: n })
+    }
+  }
+
+  function handlePerNightChange(e) {
+    lastEditRef.current = 'pernight'
+    onUpdate({ price_per_night: e.target.value ? +e.target.value : null })
+  }
+
+  function handleTotalChange(e) {
+    const v = e.target.value
+    lastEditRef.current = 'total'
+    editingTotalRef.current = true
+    setTotalStr(v)
+    const t = v ? +v : null
+    if (t == null) {
+      onUpdate({ price_per_night: null })
+    } else if (hotel.nights) {
+      onUpdate({ price_per_night: Math.round((t / hotel.nights) * 100) / 100 })
+    }
+    // Pas encore de nuits : on garde le total, le prix/nuit sera calculé
+    // dès que le nombre de nuits sera renseigné (voir handleNightsChange).
+  }
 
   useEffect(() => { onUpdate({ name: debouncedName }) }, [debouncedName])
   useEffect(() => {
@@ -495,20 +542,36 @@ function HotelCard({ hotel, index, stepNom, isOnly, onUpdate, onDelete, onSelect
           {hotel.lat && <span style={{ fontSize: 11, color: '#4ade80' }}>Placé sur la carte ✓</span>}
         </label>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <label style={labelStyle}>
-            <span>CHF / nuit</span>
-            <input style={inputStyle} type="number" min="0" placeholder="0" value={hotel.price_per_night ?? ''} onChange={e => onUpdate({ price_per_night: e.target.value ? +e.target.value : null })} />
-          </label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
           <label style={labelStyle}>
             <span>Nuits</span>
-            <input style={inputStyle} type="number" min="0" placeholder="0" value={hotel.nights ?? ''} onChange={e => onUpdate({ nights: e.target.value ? +e.target.value : null })} />
+            <input style={inputStyle} type="number" min="0" placeholder="0" value={hotel.nights ?? ''} onChange={handleNightsChange} />
+          </label>
+          <label style={labelStyle}>
+            <span>CHF / nuit</span>
+            <input style={inputStyle} type="number" min="0" placeholder="0" value={hotel.price_per_night ?? ''} onChange={handlePerNightChange} />
+          </label>
+          <label style={labelStyle}>
+            <span>Total CHF</span>
+            <input
+              style={inputStyle}
+              type="number"
+              min="0"
+              placeholder="0"
+              value={totalStr}
+              onChange={handleTotalChange}
+              onBlur={() => { editingTotalRef.current = false }}
+            />
           </label>
         </div>
+        <div style={{ fontSize: 10.5, color: '#8fa8c4', marginTop: -2 }}>
+          Saisis le total du séjour (comme sur Booking) ou le prix par nuit — l'autre se calcule automatiquement.
+          {totalStr && !hotel.nights && <span style={{ color: '#fbbf24' }}> Indique le nombre de nuits pour répartir le prix.</span>}
+        </div>
 
-        {total && (
+        {totalNum != null && (
           <div style={{ background: hotel.selected ? 'rgba(74,222,128,0.2)' : 'rgba(74,222,128,0.12)', borderRadius: 8, padding: '7px 11px', fontSize: 13, color: '#4ade80', fontWeight: 700 }}>
-            Total : {total.toLocaleString('fr-FR')} CHF
+            Total : {totalNum.toLocaleString('fr-FR')} CHF{hotel.nights ? ` · ${hotel.nights} nuit${hotel.nights > 1 ? 's' : ''}` : ''}
           </div>
         )}
         {hotel.lat && <MetroWidget lat={hotel.lat} lng={hotel.lng} compact />}
