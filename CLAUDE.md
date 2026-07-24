@@ -1,5 +1,7 @@
 # Thailand Travel Map — CLAUDE.md
 
+> **Avant toute session, lire `JOURNAL.md` ; à la fin, y ajouter ce qui a été fait.** (convention partagée Cowork ↔ Claude Code)
+
 Voyage Jordaan & Abbey · Thaïlande · Août 2026
 App React 18 + Vite 5 + react-leaflet 4 + Supabase + Vercel PWA
 
