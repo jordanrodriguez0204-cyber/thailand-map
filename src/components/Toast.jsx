@@ -22,7 +22,7 @@ export function Toast({ message, type = 'info' }) {
       padding: '10px 18px', borderRadius: 12,
       fontSize: 13, fontWeight: 500,
       boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-      zIndex: 3000, whiteSpace: 'nowrap',
+      zIndex: 3500, whiteSpace: 'nowrap',
       animation: 'fadeIn 0.2s ease',
       display: 'flex', alignItems: 'center', gap: 8,
     }}>

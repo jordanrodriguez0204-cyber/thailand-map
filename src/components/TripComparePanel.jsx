@@ -2,25 +2,17 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { formatDuration } from '../data/destinations'
 import { transportTotals } from '../utils/tripDerive'
+import { fmtCHF } from '../utils/money'
 import { ScalesIcon, CloseIcon, CheckIcon, TransportIcon, ExternalIcon, Avatar } from './icons'
 import { USERS } from '../constants'
 
 const USER_COLOR = { Jordan: '#38bdf8', Abbey: '#4ade80' }
 
-// Comparateur global du voyage : tous les hôtels de toutes les étapes, avec cases à cocher
-// pour composer le panier à comparer. Totaux = hôtels (retenus / moins chers / plus chers
-// parmi les cochés) + transports. Le ★ "retenu" est le même que dans Budget/HotelPanel.
+// Comparateur du voyage, version simple : par étape, les hôtels avec leur total,
+// le moins cher surligné automatiquement. ★ = retenu pour le budget (même que
+// Budget/HotelPanel), J/A = le choix de chacun. Totaux Transports + Hôtels + Voyage en pied.
 
-function exclKey(itinId) { return `th_trip_compare_excl_${itinId}` }
-
-function loadExcluded(itinId) {
-  try { return new Set(JSON.parse(localStorage.getItem(exclKey(itinId)) || '[]')) }
-  catch { return new Set() }
-}
-
-export function TripComparePanel({ steps, mainSteps, excursions = [], itinId, getHotels, selectHotel, setUserPick, currentUser, getSegment, initialStepId, isMobile, onClose }) {
-  const [excluded, setExcluded] = useState(() => loadExcluded(itinId))
-
+export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels, selectHotel, setUserPick, currentUser, getSegment, initialStepId, isMobile, onToast, onClose }) {
   // Ouverture depuis une étape précise : scroll + mise en avant temporaire de sa section
   const sectionRefs = useRef({})
   const [highlightId, setHighlightId] = useState(initialStepId || null)
@@ -31,37 +23,35 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], itinId, ge
     return () => clearTimeout(t)
   }, [initialStepId])
 
-  function toggle(hotelId) {
-    setExcluded(prev => {
-      const next = new Set(prev)
-      if (next.has(hotelId)) next.delete(hotelId)
-      else next.add(hotelId)
-      localStorage.setItem(exclKey(itinId), JSON.stringify([...next]))
-      return next
-    })
+  // Animation "pop" sur le bouton qu'on vient de valider (remount via key pour rejouer)
+  const [pop, setPop] = useState(null) // { id: `${hotelId}:${quoi}`, t }
+
+  function validateStar(step, h) {
+    selectHotel(step.id, h.id)
+    setPop({ id: `${h.id}:star`, t: Date.now() })
+    if (!h.selected) onToast?.('Hôtel retenu pour le budget', 'success', 2000)
   }
 
-  function setAll(included) {
-    const next = new Set()
-    if (!included) for (const s of steps) for (const h of getHotels(s.id) || []) next.add(h.id)
-    localStorage.setItem(exclKey(itinId), JSON.stringify([...next]))
-    setExcluded(next)
+  function validatePick(step, h, u) {
+    const wasActive = !!h.favs?.[u]
+    setUserPick(step.id, h.id, u)
+    setPop({ id: `${h.id}:${u}`, t: Date.now() })
+    if (wasActive) onToast?.(`Choix de ${u} retiré`, 'info', 1600)
+    else onToast?.(u === currentUser ? 'Ton choix est enregistré' : `Choix de ${u} enregistré`, 'success', 2000)
   }
 
-  // Sections par étape (ordre de l'itinéraire), avec stats par étape
+  // Sections par étape (ordre de l'itinéraire)
   const sections = useMemo(() => steps.map(step => {
     const hotels = (getHotels(step.id) || []).filter(h => h.name || h.address)
     const rows = hotels.map(h => ({
       ...h,
       total: (h.price_per_night > 0 && h.nights > 0) ? h.price_per_night * h.nights : null,
-      included: !excluded.has(h.id),
     }))
-    const pool = rows.filter(r => r.included && r.total != null)
-    const minTotal = pool.length ? Math.min(...pool.map(r => r.total)) : null
-    const maxTotal = pool.length ? Math.max(...pool.map(r => r.total)) : null
+    const priced = rows.filter(r => r.total != null)
+    const minTotal = priced.length ? Math.min(...priced.map(r => r.total)) : null
     const chosen = rows.find(r => r.selected) || null
-    return { step, rows, minTotal, maxTotal, chosenTotal: chosen?.total ?? null }
-  }), [steps, getHotels, excluded])
+    return { step, rows, minTotal, pricedCount: priced.length, chosenTotal: chosen?.total ?? null }
+  }), [steps, getHotels])
 
   const withHotels = sections.filter(s => s.rows.length > 0)
 
@@ -72,21 +62,8 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], itinId, ge
   )
 
   const sumChosen = withHotels.reduce((a, s) => a + (s.chosenTotal ?? 0), 0)
-  const sumMin = withHotels.reduce((a, s) => a + (s.minTotal ?? 0), 0)
-  const sumMax = withHotels.reduce((a, s) => a + (s.maxTotal ?? 0), 0)
-  const noPrice = withHotels.filter(s => s.minTotal == null).length
-  const noHotel = sections.length - withHotels.length
 
-  // Scénarios par personne : son choix perso, sinon le ★ retenu de l'étape
-  const scenarios = USERS.map(u => {
-    let total = 0, picks = 0
-    for (const s of withHotels) {
-      const pick = s.rows.find(r => r.favs?.[u])
-      if (pick) { picks++; total += pick.total ?? 0 }
-      else total += s.chosenTotal ?? 0
-    }
-    return { user: u, total, picks }
-  })
+  // Accord / désaccord J-A par étape
   const agree = withHotels.filter(s => {
     const picks = USERS.map(u => s.rows.find(r => r.favs?.[u])?.id)
     return picks.every(Boolean) && new Set(picks).size === 1
@@ -96,7 +73,14 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], itinId, ge
     return picks.every(Boolean) && new Set(picks).size > 1
   }).length
 
-  const fmt = v => v > 0 ? `${Math.round(v).toLocaleString('fr-FR')} CHF` : '—'
+  const notes = []
+  if (agree > 0) notes.push(`vous êtes d'accord sur ${agree} étape${agree > 1 ? 's' : ''}`)
+  if (disagree > 0) notes.push(`à départager sur ${disagree}`)
+  const noPrice = withHotels.filter(s => s.pricedCount === 0).length
+  if (noPrice > 0) notes.push(`${noPrice} étape${noPrice > 1 ? 's' : ''} sans prix`)
+
+  const popStyle = id => pop?.id === id ? { animation: 'popValidate 0.35s ease' } : null
+  const popKey = id => pop?.id === id ? pop.t : undefined
 
   return createPortal(
     <div style={overlay} onClick={onClose}>
@@ -113,18 +97,14 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], itinId, ge
               <ScalesIcon size={17} style={{ color: '#38bdf8' }} />Comparateur du voyage
             </div>
             <div style={{ fontSize: 11, color: '#8fa8c4', marginTop: 2 }}>
-              Coche les hôtels à comparer · ★ = retenu pour le budget · J/A = le choix de chacun
+              ★ = retenu pour le budget · J/A = le choix de chacun
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-            <button onClick={() => setAll(true)} style={smallBtn}>Tout cocher</button>
-            <button onClick={() => setAll(false)} style={smallBtn}>Tout décocher</button>
-            <button onClick={onClose} style={{
-              background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '50%',
-              width: isMobile ? 44 : 32, height: isMobile ? 44 : 32, cursor: 'pointer', color: '#8fa8c4',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}><CloseIcon size={15} /></button>
-          </div>
+          <button onClick={onClose} style={{
+            background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '50%',
+            width: isMobile ? 44 : 32, height: isMobile ? 44 : 32, cursor: 'pointer', color: '#8fa8c4',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          }}><CloseIcon size={15} /></button>
         </div>
 
         {/* Corps : étapes + hôtels */}
@@ -135,7 +115,7 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], itinId, ge
               <span style={{ fontSize: 12 }}>Ouvre une étape → onglet Budget → ajoute des hôtels ou colle des liens Booking.</span>
             </div>
           )}
-          {withHotels.map(({ step, rows, minTotal }) => (
+          {withHotels.map(({ step, rows, minTotal, pricedCount }) => (
             <div
               key={step.id}
               ref={el => { sectionRefs.current[step.id] = el }}
@@ -151,23 +131,15 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], itinId, ge
               }}>
                 <span style={{ fontSize: 13.5, fontWeight: 800, color: '#e8f4fd' }}>{step.nom}</span>
                 <span style={{ fontSize: 11, color: '#8fa8c4' }}>{step.dates}</span>
-                <span style={{ fontSize: 11, color: '#8fa8c4', marginLeft: 'auto' }}>
-                  {rows.filter(r => r.included).length}/{rows.length} coché{rows.length > 1 ? 's' : ''}
-                </span>
               </div>
               {rows.map(h => {
-                const winner = h.included && h.total != null && h.total === minTotal && rows.filter(r => r.included && r.total != null).length >= 2
+                const winner = h.total != null && h.total === minTotal && pricedCount >= 2
                 return (
                   <div key={h.id} style={{
                     display: 'flex', alignItems: 'center', gap: 8,
                     padding: isMobile ? '8px 6px' : '5px 6px', borderRadius: 8,
                     background: winner ? 'rgba(74,222,128,0.08)' : 'transparent',
-                    opacity: h.included ? 1 : 0.45,
                   }}>
-                    <input
-                      type="checkbox" checked={h.included} onChange={() => toggle(h.id)}
-                      style={{ width: 16, height: 16, accentColor: '#38bdf8', cursor: 'pointer', flexShrink: 0 }}
-                    />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <span style={{ fontSize: 12.5, fontWeight: 600, color: '#e8f4fd' }}>
                         {h.name || <span style={{ color: '#8fa8c4', fontStyle: 'italic' }}>Sans nom</span>}
@@ -175,7 +147,7 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], itinId, ge
                       <span style={{ fontSize: 11, color: '#8fa8c4', marginLeft: 6 }}>
                         {h.booked && <span style={{ color: '#4ade80', fontWeight: 700 }}>✓ réservé&nbsp;&nbsp;</span>}
                         {h.rating != null && <span style={{ color: '#fbbf24', fontWeight: 700 }}>★ {h.rating}&nbsp;&nbsp;</span>}
-                        {h.price_per_night > 0 ? `${h.price_per_night} CHF/n` : 'prix ?'}
+                        {h.price_per_night > 0 ? `${fmtCHF(h.price_per_night)}/nuit` : 'prix ?'}
                         {h.nights > 0 ? ` · ${h.nights}n` : ''}
                       </span>
                     </div>
@@ -183,7 +155,7 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], itinId, ge
                       fontSize: 12.5, fontWeight: 700, minWidth: 76, textAlign: 'right', flexShrink: 0,
                       color: winner ? '#4ade80' : h.total != null ? '#e8f4fd' : '#8fa8c4',
                     }}>
-                      {h.total != null ? fmt(h.total) : '—'}
+                      {h.total != null ? fmtCHF(h.total) : '—'}
                       {winner && <CheckIcon size={11} style={{ marginLeft: 4, verticalAlign: -1 }} />}
                     </span>
                     {USERS.map(u => {
@@ -191,8 +163,8 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], itinId, ge
                       const c = USER_COLOR[u] || '#8fa8c4'
                       return (
                         <button
-                          key={u}
-                          onClick={() => setUserPick(step.id, h.id, u)}
+                          key={popKey(`${h.id}:${u}`) ?? u}
+                          onClick={() => validatePick(step, h, u)}
                           title={`Choix de ${u}${u === currentUser ? ' (toi)' : ''}`}
                           style={{
                             border: active ? `1.5px solid ${c}` : '1.5px solid transparent',
@@ -201,18 +173,21 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], itinId, ge
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             background: active ? c + '22' : 'rgba(255,255,255,0.04)',
                             opacity: active ? 1 : 0.55,
+                            ...popStyle(`${h.id}:${u}`),
                           }}
                         ><Avatar name={u} size={16} /></button>
                       )
                     })}
                     <button
-                      onClick={() => selectHotel(step.id, h.id)}
+                      key={popKey(`${h.id}:star`) ?? 'star'}
+                      onClick={() => validateStar(step, h)}
                       title={h.selected ? 'Retenu pour le budget' : 'Retenir pour le budget'}
                       style={{
                         border: 'none', borderRadius: 7, cursor: 'pointer', flexShrink: 0,
                         width: isMobile ? 40 : 30, height: isMobile ? 40 : 26, fontSize: 13, fontWeight: 700,
                         background: h.selected ? '#38bdf8' : 'rgba(255,255,255,0.06)',
                         color: h.selected ? '#0d1f3c' : '#8fa8c4',
+                        ...popStyle(`${h.id}:star`),
                       }}
                     >★</button>
                     {h.booking_url ? (
@@ -231,7 +206,7 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], itinId, ge
           ))}
         </div>
 
-        {/* Récap budget */}
+        {/* Récap budget : 3 chiffres, c'est tout */}
         {withHotels.length > 0 && (
           <div style={{
             flexShrink: 0, padding: '12px 20px 16px', borderTop: '1px solid rgba(255,255,255,0.09)',
@@ -239,28 +214,19 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], itinId, ge
           }}>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <Stat label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><TransportIcon mode="plane" size={12} />Transports</span>}
-                value={fmt(transport.price)}
+                value={fmtCHF(transport.price)}
                 sub={`${transport.km.toLocaleString('fr-FR')} km · ${formatDuration(transport.durMin)}`}
                 color="#f87171" />
-              <Stat label="Hôtels retenus (★)" value={fmt(sumChosen)}
-                sub={`Total voyage ${fmt(sumChosen + transport.price)}`} color="#38bdf8" bold />
-              {scenarios.map(({ user, total, picks }) => (
-                <Stat
-                  key={user}
-                  label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Avatar name={user} size={13} />Sélection {user}</span>}
-                  value={fmt(total)}
-                  sub={picks > 0 ? `${picks} choix perso · reste = ★` : 'aucun choix perso (= ★)'}
-                  color={USER_COLOR[user] || '#8fa8c4'}
-                />
-              ))}
+              <Stat label="Hôtels retenus (★)" value={fmtCHF(sumChosen)}
+                sub={`${withHotels.length} étape${withHotels.length > 1 ? 's' : ''}`} color="#4ade80" />
+              <Stat label="Total voyage" value={fmtCHF(sumChosen + transport.price)}
+                sub="transports + hôtels ★" color="#38bdf8" bold />
             </div>
-            <div style={{ fontSize: 11, color: '#8fa8c4', marginTop: 8 }}>
-              Fourchette des cochés : {fmt(sumMin)} – {fmt(sumMax)}
-              {sumChosen > 0 && sumMin > 0 && sumChosen > sumMin && ` · économie possible ${fmt(sumChosen - sumMin)}`}
-              {(agree > 0 || disagree > 0) && ` · vous êtes d'accord sur ${agree} étape${agree > 1 ? 's' : ''}${disagree > 0 ? `, à départager sur ${disagree}` : ''}`}
-              {noPrice > 0 && ` · ${noPrice} étape${noPrice > 1 ? 's' : ''} sans prix`}
-              {noHotel > 0 && ` · ${noHotel} étape${noHotel > 1 ? 's' : ''} sans hôtel`}
-            </div>
+            {notes.length > 0 && (
+              <div style={{ fontSize: 11, color: '#8fa8c4', marginTop: 8 }}>
+                {notes.join(' · ')}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -288,8 +254,4 @@ const panel = {
   maxHeight: '92vh', display: 'flex', flexDirection: 'column',
   boxShadow: '0 32px 80px rgba(0,0,0,0.35)',
   animation: 'modalIn 0.18s ease',
-}
-const smallBtn = {
-  background: 'rgba(56,189,248,0.12)', color: '#7dd3fc', border: 'none', borderRadius: 8,
-  padding: '6px 10px', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
 }

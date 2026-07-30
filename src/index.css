@@ -104,3 +104,10 @@ button:active { opacity: 0.82; }
   from { opacity: 0; }
   to   { opacity: 1; }
 }
+
+/* "Pop" de confirmation quand on valide un choix (★, J/A) */
+@keyframes popValidate {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}

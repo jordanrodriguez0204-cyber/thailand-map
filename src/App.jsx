@@ -588,7 +588,6 @@ export default function App() {
             steps={steps}
             mainSteps={mainSteps}
             excursions={excursions}
-            itinId={activeItinId}
             getHotels={getHotels}
             selectHotel={selectHotel}
             setUserPick={setUserPick}
@@ -596,6 +595,7 @@ export default function App() {
             getSegment={getSegment}
             initialStepId={tripCompare.stepId}
             isMobile={isMobile}
+            onToast={showToast}
             onClose={() => setTripCompare(null)}
           />
         )}
