@@ -15,6 +15,14 @@ const de = u => /^[aeiouy]/i.test(u) ? `d'${u}` : `de ${u}`
 // le moins cher surligné automatiquement. ★ = retenu pour le budget (même que
 // Budget/HotelPanel), J/A = le choix de chacun. Totaux Transports + Hôtels + Voyage en pied.
 
+// Statut de décision d'une étape : réservé > accord > à départager > en attente
+function stepStatus(rows) {
+  if (rows.some(r => r.booked)) return 'reserve'
+  const picks = USERS.map(u => rows.find(r => r.favs?.[u]))
+  if (picks.every(Boolean)) return new Set(picks.map(p => p.id)).size === 1 ? 'accord' : 'depart'
+  return 'attente'
+}
+
 export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels, selectHotel, setUserPick, currentUser, getSegment, initialStepId, isMobile, onToast, onClose }) {
   // Ouverture depuis une étape précise : scroll + mise en avant temporaire de sa section
   const sectionRefs = useRef({})
@@ -25,6 +33,21 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
     const t = setTimeout(() => setHighlightId(null), 1800)
     return () => clearTimeout(t)
   }, [initialStepId])
+
+  // Purge des clés de l'ancien panier à cases à cocher (supprimé juillet 2026)
+  useEffect(() => {
+    try {
+      Object.keys(localStorage).filter(k => k.startsWith('th_trip_compare_excl_')).forEach(k => localStorage.removeItem(k))
+    } catch { /* stockage indisponible : rien à purger */ }
+  }, [])
+
+  // Étapes réservées : les hôtels non retenus sont repliés (dépliables)
+  const [unfolded, setUnfolded] = useState(() => new Set())
+  const toggleFold = stepId => setUnfolded(prev => {
+    const next = new Set(prev)
+    if (next.has(stepId)) next.delete(stepId); else next.add(stepId)
+    return next
+  })
 
   // Animation "pop" sur le bouton qu'on vient de valider (remount via key pour rejouer)
   const [pop, setPop] = useState(null) // { id: `${hotelId}:${quoi}`, t }
@@ -49,10 +72,22 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
     const p1 = rows.find(r => r.favs?.[u1])
     const p2 = rows.find(r => r.favs?.[u2])
     const chosen = rows.find(r => r.selected)
+    const booked = rows.find(r => r.booked)
 
     const base = {
       display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap',
       borderRadius: 8, padding: '7px 10px', marginTop: 4, fontSize: 11.5,
+    }
+
+    // Réservé : la décision est close
+    if (booked) {
+      return (
+        <div style={{ ...base, background: 'rgba(74,222,128,0.10)', border: '1px solid rgba(74,222,128,0.25)', color: '#4ade80' }}>
+          <CheckIcon size={12} style={{ flexShrink: 0 }} />
+          <span style={{ fontWeight: 700 }}>Réservé :</span>
+          <span style={{ color: '#dcfce7' }}>{booked.name}</span>
+        </div>
+      )
     }
 
     // Accord : même hôtel choisi par les deux
@@ -144,21 +179,17 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
 
   const sumChosen = withHotels.reduce((a, s) => a + (s.chosenTotal ?? 0), 0)
 
-  // Accord / désaccord J-A par étape
-  const agree = withHotels.filter(s => {
-    const picks = USERS.map(u => s.rows.find(r => r.favs?.[u])?.id)
-    return picks.every(Boolean) && new Set(picks).size === 1
-  }).length
-  const disagree = withHotels.filter(s => {
-    const picks = USERS.map(u => s.rows.find(r => r.favs?.[u])?.id)
-    return picks.every(Boolean) && new Set(picks).size > 1
-  }).length
-
-  const notes = []
-  if (agree > 0) notes.push(`vous êtes d'accord sur ${agree} étape${agree > 1 ? 's' : ''}`)
-  if (disagree > 0) notes.push(`à départager sur ${disagree}`)
-  const noPrice = withHotels.filter(s => s.pricedCount === 0).length
-  if (noPrice > 0) notes.push(`${noPrice} étape${noPrice > 1 ? 's' : ''} sans prix`)
+  // Progression : où en est-on, étape par étape ?
+  const counts = { reserve: 0, accord: 0, depart: 0, attente: 0 }
+  for (const s of withHotels) counts[stepStatus(s.rows)]++
+  const noHotel = sections.length - withHotels.length
+  const chips = [
+    counts.reserve > 0 && { n: counts.reserve, label: `réservée${counts.reserve > 1 ? 's' : ''}`, color: '#4ade80' },
+    counts.accord > 0 && { n: counts.accord, label: "d'accord", color: '#4ade80' },
+    counts.depart > 0 && { n: counts.depart, label: 'à départager', color: '#fbbf24' },
+    counts.attente > 0 && { n: counts.attente, label: 'en attente', color: '#8fa8c4' },
+    noHotel > 0 && { n: noHotel, label: `sans hôtel`, color: '#8fa8c4', dashed: true },
+  ].filter(Boolean)
 
   const popStyle = id => pop?.id === id ? { animation: 'popValidate 0.35s ease' } : null
   const popKey = id => pop?.id === id ? pop.t : undefined
@@ -180,6 +211,18 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
             <div style={{ fontSize: 11, color: '#8fa8c4', marginTop: 2 }}>
               ★ = retenu pour le budget · J/A = le choix de chacun
             </div>
+            {chips.length > 0 && (
+              <div style={{ display: 'flex', gap: 5, marginTop: 7, flexWrap: 'wrap' }}>
+                {chips.map(c => (
+                  <span key={c.label} style={{
+                    fontSize: 10.5, fontWeight: 700, color: c.color,
+                    background: c.dashed ? 'transparent' : c.color + '18',
+                    border: c.dashed ? `1px dashed ${c.color}55` : '1px solid transparent',
+                    borderRadius: 20, padding: '2px 9px', whiteSpace: 'nowrap',
+                  }}>{c.n} {c.label}</span>
+                ))}
+              </div>
+            )}
           </div>
           <button onClick={onClose} style={{
             background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: '50%',
@@ -196,7 +239,11 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
               <span style={{ fontSize: 12 }}>Ouvre une étape → onglet Budget → ajoute des hôtels ou colle des liens Booking.</span>
             </div>
           )}
-          {withHotels.map(({ step, rows, minTotal, pricedCount }) => (
+          {withHotels.map(({ step, rows, minTotal, pricedCount }) => {
+            const bookedRow = rows.find(r => r.booked)
+            const folded = bookedRow && rows.length > 1 && !unfolded.has(step.id)
+            const shownRows = folded ? rows.filter(r => r.booked) : rows
+            return (
             <div
               key={step.id}
               ref={el => { sectionRefs.current[step.id] = el }}
@@ -213,8 +260,8 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
                 <span style={{ fontSize: 13.5, fontWeight: 800, color: '#e8f4fd' }}>{step.nom}</span>
                 <span style={{ fontSize: 11, color: '#8fa8c4' }}>{step.dates}</span>
               </div>
-              {rows.map(h => {
-                const winner = h.total != null && h.total === minTotal && pricedCount >= 2
+              {shownRows.map(h => {
+                const winner = !folded && h.total != null && h.total === minTotal && pricedCount >= 2
                 return (
                   <div key={h.id} style={{
                     display: 'flex', alignItems: 'center', gap: 8,
@@ -284,8 +331,17 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
                 )
               })}
               <StepVerdict step={step} rows={rows} />
+              {bookedRow && rows.length > 1 && (
+                <button onClick={() => toggleFold(step.id)} style={{
+                  background: 'none', border: 'none', cursor: 'pointer', color: '#8fa8c4',
+                  fontSize: 11, padding: isMobile ? '8px 2px' : '4px 2px', fontWeight: 600,
+                }}>
+                  {folded ? `voir les ${rows.length - 1} autre${rows.length > 2 ? 's' : ''} hôtel${rows.length > 2 ? 's' : ''}` : 'masquer les autres hôtels'}
+                </button>
+              )}
             </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* Récap budget : 3 chiffres, c'est tout */}
@@ -304,11 +360,6 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
               <Stat label="Total voyage" value={fmtCHF(sumChosen + transport.price)}
                 sub="transports + hôtels ★" color="#38bdf8" bold />
             </div>
-            {notes.length > 0 && (
-              <div style={{ fontSize: 11, color: '#8fa8c4', marginTop: 8 }}>
-                {notes.join(' · ')}
-              </div>
-            )}
           </div>
         )}
       </div>

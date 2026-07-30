@@ -110,11 +110,6 @@ const SECTIONS = [
     title: 'Pratique',
     tools: [
       {
-        name: 'XE.com',
-        url: 'https://www.xe.com/currencyconverter/convert/?Amount=1&From=CHF&To=THB',
-        desc: 'Taux CHF → Baht en direct · le plus fiable',
-      },
-      {
         name: 'Tourism Authority of Thailand',
         url: 'https://www.tourismthailand.org/home',
         desc: 'Site officiel · visa, événements, régions',

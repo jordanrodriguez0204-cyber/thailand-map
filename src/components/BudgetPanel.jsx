@@ -3,10 +3,8 @@ import { WalletIcon, CloseIcon, TransportIcon, ScalesIcon, PencilIcon } from './
 import { haversineKm } from '../utils/geo'
 import { TRANSPORT_MODES, estimateDuration, formatDuration } from '../data/destinations'
 import { useBudgetTarget } from '../hooks/useBudgetTarget'
-import { excursionLeg } from '../utils/tripDerive'
+import { excursionLeg, ROUTE_FACTOR } from '../utils/tripDerive'
 import { fmtCHF, fmtNum } from '../utils/money'
-
-const ROUTE_FACTOR = { plane: 1.05, train: 1.4, bus: 1.5, ferry: 1.2, car: 1.3 }
 
 export function BudgetPanel({ steps, excursions = [], itinId, getSegment, getHotel, onClose, onOpenCompare }) {
   const { target, setTarget } = useBudgetTarget(itinId)

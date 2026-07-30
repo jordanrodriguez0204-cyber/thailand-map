@@ -10,7 +10,7 @@ const ROWS = [
   { icon: <WalletIcon size={18} />, title: 'Budget', text: 'Le total du voyage : hôtels retenus + transports, la jauge et ce qui reste à réserver.' },
   { icon: <DotsIcon size={18} />, title: 'Plus', text: 'Le reste : vue Aujourd\'hui, comparateur, style de carte, options.' },
   { icon: <CalendarIcon size={18} />, title: 'Aujourd\'hui', text: 'Pendant le voyage, l\'app s\'ouvre sur le programme du jour : hôtel, prochain trajet, météo.' },
-  { icon: <ScalesIcon size={18} />, title: 'Comparateur', text: 'Coche les hôtels à comparer. ★ = celui qu\'on retient pour le budget.' },
+  { icon: <ScalesIcon size={18} />, title: 'Comparateur', text: 'Les hôtels de chaque étape côte à côte. Chacun vote avec sa pastille, puis ★ = celui qu\'on retient pour le budget.' },
 ]
 
 export function HelpGuide({ isMobile, onClose }) {
@@ -60,7 +60,7 @@ export function HelpGuide({ isMobile, onClose }) {
             <div>
               <div style={{ fontSize: 13.5, fontWeight: 700, color: '#e8f4fd' }}>Vos deux pastilles</div>
               <div style={{ fontSize: 12, color: '#8fa8c4', lineHeight: 1.45 }}>
-                Dans le comparateur, tape ta pastille sur ton hôtel préféré — on voit ensuite qui a choisi quoi et le budget de chacun.
+                Dans le comparateur, tape ta pastille sur ton hôtel préféré — l'app vous dit sous chaque étape si vous êtes d'accord ou s'il faut en discuter.
               </div>
             </div>
           </div>

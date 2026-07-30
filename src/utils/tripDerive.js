@@ -4,7 +4,8 @@ import { estimateDuration } from '../data/destinations'
 // Dérivations étapes principales / excursions (sous-destinations).
 // La relation subOf vient de useSubDestinations ; ordre du tableau steps préservé.
 
-const ROUTE_FACTOR = { plane: 1.05, train: 1.4, bus: 1.5, ferry: 1.2, car: 1.3 }
+// Facteur route/vol appliqué au haversine — source unique pour toute l'app
+export const ROUTE_FACTOR = { plane: 1.05, train: 1.4, bus: 1.5, ferry: 1.2, car: 1.3 }
 
 export function splitSteps(steps, subOf) {
   const byId = new Map(steps.map(s => [s.id, s]))

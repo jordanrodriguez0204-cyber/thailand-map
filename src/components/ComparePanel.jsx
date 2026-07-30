@@ -1,5 +1,6 @@
 import { createPortal } from 'react-dom'
 import { haversineKm } from '../utils/geo'
+import { ROUTE_FACTOR } from '../utils/tripDerive'
 import { CATEGORIES } from '../constants'
 import { CategoryIcon, CloseIcon, TransportIcon } from './icons'
 import { TRANSPORT_MODES, estimateDuration, formatDuration } from '../data/destinations'
@@ -20,8 +21,9 @@ function loadItinData(itinId, getAllStepsForCompare) {
   const segments = steps.slice(1).map((to, i) => {
     const from = steps[i]
     const seg = segsRaw[`${from.id}→${to.id}`] || {}
-    const km = Math.round(haversineKm(from.lat, from.lng, to.lat, to.lng))
     const mode = seg.mode || 'plane'
+    // Même formule que BudgetPanel : haversine × facteur route du mode
+    const km = Math.round(haversineKm(from.lat, from.lng, to.lat, to.lng) * (ROUTE_FACTOR[mode] ?? 1))
     const dur = seg.duration_override ?? estimateDuration(km, mode)
     const price = seg.price_chf ?? seg.price ?? null
     return { from, to, km, mode, dur, price, notes: seg.notes || '' }
