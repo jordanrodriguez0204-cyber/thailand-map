@@ -8,6 +8,9 @@ import { USERS } from '../constants'
 
 const USER_COLOR = { Jordan: '#38bdf8', Abbey: '#4ade80' }
 
+// « de Jordan » mais « d'Abbey »
+const de = u => /^[aeiouy]/i.test(u) ? `d'${u}` : `de ${u}`
+
 // Comparateur du voyage, version simple : par étape, les hôtels avec leur total,
 // le moins cher surligné automatiquement. ★ = retenu pour le budget (même que
 // Budget/HotelPanel), J/A = le choix de chacun. Totaux Transports + Hôtels + Voyage en pied.
@@ -36,8 +39,86 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
     const wasActive = !!h.favs?.[u]
     setUserPick(step.id, h.id, u)
     setPop({ id: `${h.id}:${u}`, t: Date.now() })
-    if (wasActive) onToast?.(`Choix de ${u} retiré`, 'info', 1600)
-    else onToast?.(u === currentUser ? 'Ton choix est enregistré' : `Choix de ${u} enregistré`, 'success', 2000)
+    if (wasActive) onToast?.(`Choix ${de(u)} retiré`, 'info', 1600)
+    else onToast?.(u === currentUser ? 'Ton choix est enregistré' : `Choix ${de(u)} enregistré`, 'success', 2000)
+  }
+
+  // Verdict par étape : où en est la décision Jordan / Abbey ?
+  function StepVerdict({ step, rows }) {
+    const [u1, u2] = USERS
+    const p1 = rows.find(r => r.favs?.[u1])
+    const p2 = rows.find(r => r.favs?.[u2])
+    const chosen = rows.find(r => r.selected)
+
+    const base = {
+      display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap',
+      borderRadius: 8, padding: '7px 10px', marginTop: 4, fontSize: 11.5,
+    }
+
+    // Accord : même hôtel choisi par les deux
+    if (p1 && p2 && p1.id === p2.id) {
+      const isKept = chosen?.id === p1.id
+      return (
+        <div style={{ ...base, background: 'rgba(74,222,128,0.10)', border: '1px solid rgba(74,222,128,0.25)', color: '#4ade80' }}>
+          <CheckIcon size={12} style={{ flexShrink: 0 }} />
+          <span style={{ fontWeight: 700 }}>Vous êtes d'accord :</span>
+          <span style={{ color: '#dcfce7' }}>{p1.name}</span>
+          {isKept ? (
+            <span style={{ marginLeft: 'auto', fontWeight: 700 }}>★ retenu pour le budget</span>
+          ) : (
+            <button onClick={() => validateStar(step, p1)} style={{
+              marginLeft: 'auto', border: 'none', borderRadius: 7, cursor: 'pointer',
+              background: '#4ade80', color: '#0d1f3c', fontWeight: 700, fontSize: 11,
+              padding: isMobile ? '8px 12px' : '4px 10px',
+            }}>Le retenir ★</button>
+          )}
+        </div>
+      )
+    }
+
+    // Désaccord : deux hôtels différents
+    if (p1 && p2) {
+      const gap = (p1.total != null && p2.total != null) ? Math.abs(p1.total - p2.total) : null
+      return (
+        <div style={{ ...base, background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.25)', color: '#fbbf24' }}>
+          <span style={{ fontWeight: 700, flexShrink: 0 }}>À départager</span>
+          <span style={{ color: '#cfe2f5', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <Avatar name={u1} size={13} />{p1.name}{p1.total != null ? ` (${fmtCHF(p1.total)})` : ''}
+          </span>
+          <span style={{ color: '#8fa8c4' }}>vs</span>
+          <span style={{ color: '#cfe2f5', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <Avatar name={u2} size={13} />{p2.name}{p2.total != null ? ` (${fmtCHF(p2.total)})` : ''}
+          </span>
+          {gap > 0 && <span style={{ marginLeft: 'auto', fontWeight: 700 }}>écart {fmtCHF(gap)}</span>}
+        </div>
+      )
+    }
+
+    // Un seul a voté
+    if (p1 || p2) {
+      const voter = p1 ? u1 : u2
+      const waiting = p1 ? u2 : u1
+      const pick = p1 || p2
+      return (
+        <div style={{ ...base, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', color: '#8fa8c4' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#cfe2f5' }}>
+            <Avatar name={voter} size={13} />{voter === currentUser ? 'Toi' : voter} : {pick.name}
+          </span>
+          <span style={{ marginLeft: 'auto' }}>
+            {waiting === currentUser ? 'en attente de ton choix' : `en attente du choix ${de(waiting)}`}
+          </span>
+        </div>
+      )
+    }
+
+    // Personne n'a voté
+    return (
+      <div style={{ ...base, background: 'rgba(255,255,255,0.03)', border: '1px dashed rgba(255,255,255,0.10)', color: '#8fa8c4' }}>
+        Aucun choix pour l'instant — cliquez chacun votre pastille
+        <Avatar name={u1} size={13} /><Avatar name={u2} size={13} />
+        sur votre hôtel préféré
+      </div>
+    )
   }
 
   // Sections par étape (ordre de l'itinéraire)
@@ -202,6 +283,7 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
                   </div>
                 )
               })}
+              <StepVerdict step={step} rows={rows} />
             </div>
           ))}
         </div>
