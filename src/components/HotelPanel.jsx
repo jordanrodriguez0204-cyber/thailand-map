@@ -1,4 +1,5 @@
 import { BedIcon, ScalesIcon, CloseIcon, MapIcon, PinIcon } from './icons'
+import { fmtCHF } from '../utils/money'
 export function HotelPanel({ steps, getHotels, onClose, onFly, onCompare }) {
   const entries = steps.flatMap(s => {
     const hotels = getHotels ? getHotels(s.id) : []
@@ -79,7 +80,7 @@ export function HotelPanel({ steps, getHotels, onClose, onFly, onCompare }) {
                               <div style={{ display: 'flex', gap: 6, marginTop: 5, flexWrap: 'wrap' }}>
                                 {hotel.price_per_night && (
                                   <span style={{ fontSize: 11, background: 'rgba(56,189,248,0.12)', color: '#7dd3fc', borderRadius: 5, padding: '2px 7px' }}>
-                                    {hotel.price_per_night} CHF/nuit
+                                    {fmtCHF(hotel.price_per_night)}/nuit
                                   </span>
                                 )}
                                 {hotel.nights && (
@@ -89,7 +90,7 @@ export function HotelPanel({ steps, getHotels, onClose, onFly, onCompare }) {
                                 )}
                                 {total && (
                                   <span style={{ fontSize: 11, background: 'rgba(251,191,36,0.12)', color: '#fbbf24', borderRadius: 5, padding: '2px 7px', fontWeight: 700 }}>
-                                    = {total} CHF
+                                    = {fmtCHF(total)}
                                   </span>
                                 )}
                               </div>

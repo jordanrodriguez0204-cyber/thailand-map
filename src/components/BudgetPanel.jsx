@@ -4,6 +4,7 @@ import { haversineKm } from '../utils/geo'
 import { TRANSPORT_MODES, estimateDuration, formatDuration } from '../data/destinations'
 import { useBudgetTarget } from '../hooks/useBudgetTarget'
 import { excursionLeg } from '../utils/tripDerive'
+import { fmtCHF, fmtNum } from '../utils/money'
 
 const ROUTE_FACTOR = { plane: 1.05, train: 1.4, bus: 1.5, ferry: 1.2, car: 1.3 }
 
@@ -105,10 +106,10 @@ export function BudgetPanel({ steps, excursions = [], itinId, getSegment, getHot
                     </td>
                     <td style={{ ...td, textAlign: 'right', color: '#8fa8c4' }}>{showTransport ? km : '—'}</td>
                     <td style={{ ...td, textAlign: 'right', color: '#8fa8c4' }}>{showTransport ? formatDuration(durMin) : '—'}</td>
-                    <td style={{ ...td, textAlign: 'right' }}>{showTransport && transportPrice > 0 ? `${transportPrice} CHF` : '—'}</td>
-                    <td style={{ ...td, textAlign: 'right' }}>{hotelTotal > 0 ? `${hotelTotal} CHF` : '—'}</td>
+                    <td style={{ ...td, textAlign: 'right' }}>{showTransport ? fmtCHF(transportPrice) : '—'}</td>
+                    <td style={{ ...td, textAlign: 'right' }}>{fmtCHF(hotelTotal)}</td>
                     <td style={{ ...td, textAlign: 'right', fontWeight: 600, color: rowTotal > 0 ? '#e8f4fd' : '#8fa8c4' }}>
-                      {rowTotal > 0 ? `${rowTotal} CHF` : '—'}
+                      {fmtCHF(rowTotal)}
                     </td>
                   </tr>
                 )
@@ -120,9 +121,9 @@ export function BudgetPanel({ steps, excursions = [], itinId, getSegment, getHot
                 <td style={td} />
                 <td style={{ ...td, textAlign: 'right' }}>{totalKm} km</td>
                 <td style={{ ...td, textAlign: 'right' }}>{formatDuration(totalDurMin)}</td>
-                <td style={{ ...td, textAlign: 'right', color: '#f87171' }}>{totalTransport > 0 ? `${totalTransport} CHF` : '—'}</td>
-                <td style={{ ...td, textAlign: 'right', color: '#7dd3fc' }}>{totalHotel > 0 ? `${totalHotel} CHF` : '—'}</td>
-                <td style={{ ...td, textAlign: 'right', fontSize: 15, color: '#38bdf8' }}>{grandTotal > 0 ? `${grandTotal} CHF` : '—'}</td>
+                <td style={{ ...td, textAlign: 'right', color: '#f87171' }}>{fmtCHF(totalTransport)}</td>
+                <td style={{ ...td, textAlign: 'right', color: '#7dd3fc' }}>{fmtCHF(totalHotel)}</td>
+                <td style={{ ...td, textAlign: 'right', fontSize: 15, color: '#38bdf8' }}>{fmtCHF(grandTotal)}</td>
               </tr>
             </tfoot>
           </table>
@@ -130,9 +131,9 @@ export function BudgetPanel({ steps, excursions = [], itinId, getSegment, getHot
 
         {grandTotal > 0 && (
           <div style={{ marginTop: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <StatCard label="Total transport" value={`${totalTransport} CHF`} color="#f87171" />
-            <StatCard label="Total hébergement" value={`${totalHotel} CHF`} color="#7dd3fc" />
-            <StatCard label="Budget total" value={`${grandTotal} CHF`} color="#38bdf8" bold />
+            <StatCard label="Total transport" value={fmtCHF(totalTransport)} color="#f87171" />
+            <StatCard label="Total hébergement" value={fmtCHF(totalHotel)} color="#7dd3fc" />
+            <StatCard label="Budget total" value={fmtCHF(grandTotal)} color="#38bdf8" bold />
           </div>
         )}
 
@@ -154,7 +155,7 @@ export function BudgetPanel({ steps, excursions = [], itinId, getSegment, getHot
               <div style={{ fontSize: 12, color: '#cfe2f5', lineHeight: 1.7 }}>
                 {pending.map(r => (
                   <div key={r.step.id}>
-                    {r.step.nom} — {r.hotel.name}{r.hotelTotal > 0 ? ` (${r.hotelTotal} CHF)` : ''}
+                    {r.step.nom} — {r.hotel.name}{r.hotelTotal > 0 ? ` (${fmtCHF(r.hotelTotal)})` : ''}
                   </div>
                 ))}
               </div>
@@ -211,11 +212,11 @@ function BudgetGauge({ engaged, target, onSetTarget }) {
     <div style={{ marginTop: 14, background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: '10px 14px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
         <span style={{ fontSize: 12, fontWeight: 700, color: '#e8f4fd' }}>
-          {engaged.toLocaleString('fr-FR')} / {target.toLocaleString('fr-FR')} CHF engagés
+          {fmtNum(engaged)} / {fmtNum(target)} CHF engagés
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color }}>
-            {remaining >= 0 ? `reste ${remaining.toLocaleString('fr-FR')} CHF` : `dépassé de ${Math.abs(remaining).toLocaleString('fr-FR')} CHF`}
+            {remaining >= 0 ? `reste ${fmtNum(remaining)} CHF` : `dépassé de ${fmtNum(Math.abs(remaining))} CHF`}
           </span>
           <button onClick={() => { setDraft(target); setEditing(true) }} title="Modifier le budget cible" style={{
             background: 'none', border: 'none', color: '#8fa8c4', cursor: 'pointer', padding: 2, display: 'flex',

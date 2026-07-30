@@ -3,6 +3,7 @@ import { haversineKm } from '../utils/geo'
 import { CATEGORIES } from '../constants'
 import { CategoryIcon, CloseIcon, TransportIcon } from './icons'
 import { TRANSPORT_MODES, estimateDuration, formatDuration } from '../data/destinations'
+import { fmtCHF } from '../utils/money'
 
 function loadItinData(itinId, getAllStepsForCompare) {
   const steps = (getAllStepsForCompare([itinId]) || [])
@@ -85,7 +86,7 @@ function SegmentRow({ seg, color }) {
           <>
             <span style={{ fontSize: 11, color: '#8fa8c4' }}>·</span>
             <span style={{ fontSize: 10, fontWeight: 700, color: '#4ade80' }}>
-              {seg.price} CHF
+              {fmtCHF(seg.price)}
             </span>
           </>
         )}
@@ -273,16 +274,13 @@ export function ComparePanel({ itineraries, getAllStepsForCompare, onClose }) {
                   values={datas.map(d => formatDuration(d.totalDuration))}
                   itineraries={itineraries} />
                 <StatRow label="Budget transport"
-                  values={datas.map(d => d.totalTransport > 0 ? `${d.totalTransport} CHF` : '—')}
+                  values={datas.map(d => fmtCHF(d.totalTransport))}
                   itineraries={itineraries} />
                 <StatRow label="Budget hôtels"
-                  values={datas.map(d => d.totalHotel > 0 ? `${d.totalHotel} CHF` : '—')}
+                  values={datas.map(d => fmtCHF(d.totalHotel))}
                   itineraries={itineraries} />
                 <StatRow label="Total budget"
-                  values={datas.map(d => {
-                    const t = d.totalTransport + d.totalHotel
-                    return t > 0 ? `${t.toLocaleString()} CHF` : '—'
-                  })}
+                  values={datas.map(d => fmtCHF(d.totalTransport + d.totalHotel))}
                   itineraries={itineraries} />
               </tbody>
             </table>

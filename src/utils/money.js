@@ -4,9 +4,14 @@ export function ceil5cts(v) {
   return Math.ceil(Number((v * 20).toFixed(6))) / 20
 }
 
-export function fmtCHF(v) {
-  if (!(v > 0)) return '—'
+// Nombre localisé, arrondi 5 cts sup., décimales seulement si nécessaire (ex: "1 234,60")
+export function fmtNum(v) {
   const r = ceil5cts(v)
   const opts = Number.isInteger(r) ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-  return `${r.toLocaleString('fr-FR', opts)} CHF`
+  return r.toLocaleString('fr-FR', opts)
+}
+
+export function fmtCHF(v) {
+  if (!(v > 0)) return '—'
+  return `${fmtNum(v)} CHF`
 }

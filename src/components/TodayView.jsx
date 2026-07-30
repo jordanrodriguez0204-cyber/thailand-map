@@ -3,6 +3,7 @@ import { CategoryIcon, BedIcon, MapIcon, ExternalIcon, TransportIcon, CompassIco
 import { WeatherBadge } from './WeatherBadge'
 import { TRANSPORT_MODES } from '../data/destinations'
 import { parseStepDates, stepForDate, nextStepAfter, tripWindow } from '../utils/tripDates'
+import { fmtCHF } from '../utils/money'
 
 // Vue « Aujourd'hui » — l'écran qui répond tout seul à la question « qu'est-ce qui se passe ? » :
 // étape du jour, hôtel (adresse + itinéraire), prochain déplacement, météo. Zéro édition.
@@ -136,7 +137,7 @@ export function TodayView({ steps, subOf = {}, getSelectedHotel, getSegment, onS
               <span style={{ color: '#8fa8c4', fontWeight: 500 }}>
                 {nextDates ? ` · le ${nextDates.start.getDate()} ${MONTHS[nextDates.start.getMonth()]}` : ` · ${next.dates}`}
                 {tm ? ` · ${tm.label.toLowerCase()}` : ''}
-                {seg?.price > 0 ? ` · ${seg.price} CHF` : ''}
+                {seg?.price > 0 ? ` · ${fmtCHF(seg.price)}` : ''}
               </span>
             </div>
           </Card>

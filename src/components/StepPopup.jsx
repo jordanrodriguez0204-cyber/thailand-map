@@ -8,6 +8,7 @@ import { getNearestStations, fetchWalkingRoute } from '../utils/metroUtils'
 import { isBookingUrl, hotelNameFromUrl, cleanBookingUrl, fetchBookingInfo } from '../utils/bookingImport'
 import { WeatherBadge } from './WeatherBadge'
 import { getTips } from '../data/destinations'
+import { fmtNum } from '../utils/money'
 
 function timeAgo(iso) {
   if (!iso) return ''
@@ -580,7 +581,7 @@ function HotelCard({ hotel, index, stepNom, isOnly, onUpdate, onDelete, onSelect
 
         {totalNum != null && (
           <div style={{ background: hotel.selected ? 'rgba(74,222,128,0.2)' : 'rgba(74,222,128,0.12)', borderRadius: 8, padding: '7px 11px', fontSize: 13, color: '#4ade80', fontWeight: 700 }}>
-            Total : {totalNum.toLocaleString('fr-FR')} CHF{hotel.nights ? ` · ${hotel.nights} nuit${hotel.nights > 1 ? 's' : ''}` : ''}
+            Total : {fmtNum(totalNum)} CHF{hotel.nights ? ` · ${hotel.nights} nuit${hotel.nights > 1 ? 's' : ''}` : ''}
           </div>
         )}
         {hotel.lat && <MetroWidget lat={hotel.lat} lng={hotel.lng} compact />}

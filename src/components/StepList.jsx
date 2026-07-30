@@ -12,6 +12,7 @@ import { CATEGORIES, ALL_FILTER } from '../constants'
 import { CategoryIcon, TransportIcon, GripIcon, PencilIcon, UndoIcon, PinIcon, MapIcon } from './icons'
 import { haversineKm } from '../utils/geo'
 import { TRANSPORT_MODES, estimateDuration, formatDuration } from '../data/destinations'
+import { fmtCHF } from '../utils/money'
 
 // ── Carte étape épurée ───────────────────────────────────────────────────────
 const SortableItem = memo(function SortableItem({ step, displayOrdre, sub, subKm, selected, realtimeFlash, onSelect, onEdit }) {
@@ -220,7 +221,7 @@ function JourneyView({ steps, excursions = [], getSegment, updateSegment }) {
       <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
         <StatChip label="Distance" value={`${totalKm.toLocaleString()} km`} color="#38bdf8" />
         <StatChip label="Temps" value={formatDuration(totalMinutes)} color="#7dd3fc" />
-        {totalPrice > 0 && <StatChip label="Budget" value={`${totalPrice} CHF`} color="#4ade80" />}
+        {totalPrice > 0 && <StatChip label="Budget" value={fmtCHF(totalPrice)} color="#4ade80" />}
       </div>
 
       {/* Liste segments */}
@@ -250,7 +251,7 @@ function JourneyView({ steps, excursions = [], getSegment, updateSegment }) {
             <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
               {(s.seg.price_chf || s.seg.price) > 0 && (
                 <span style={{ fontSize: 10.5, background: 'rgba(74,222,128,0.15)', color: '#4ade80', borderRadius: 5, padding: '1px 6px', fontWeight: 700 }}>
-                  {s.seg.price_chf || s.seg.price} CHF
+                  {fmtCHF(s.seg.price_chf || s.seg.price)}
                 </span>
               )}
               <span style={{ fontSize: 12, color: '#8fa8c4', marginLeft: 2, display: 'inline-flex' }}>{isOpen ? '▲' : <PencilIcon size={12} />}</span>
@@ -292,7 +293,7 @@ function JourneyView({ steps, excursions = [], getSegment, updateSegment }) {
           {totalPrice > 0 && (
             <div>
               <div style={{ fontSize: 11, color: '#8fa8c4' }}>Budget transport</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>{totalPrice} CHF</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#16a34a' }}>{fmtCHF(totalPrice)}</div>
             </div>
           )}
           <div>
