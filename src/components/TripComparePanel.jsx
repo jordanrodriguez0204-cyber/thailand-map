@@ -41,6 +41,9 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
     } catch { /* stockage indisponible : rien à purger */ }
   }, [])
 
+  // Deux angles de vue : le détail par étape (votes) ou la vue haute Jordan vs Abbey
+  const [view, setView] = useState('steps')
+
   // Étapes réservées : les hôtels non retenus sont repliés (dépliables)
   const [unfolded, setUnfolded] = useState(() => new Set())
   const toggleFold = stepId => setUnfolded(prev => {
@@ -183,6 +186,32 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
   const counts = { reserve: 0, accord: 0, depart: 0, attente: 0 }
   for (const s of withHotels) counts[stepStatus(s.rows)]++
   const noHotel = sections.length - withHotels.length
+
+  // Vue Jordan vs Abbey : pour chaque étape, le voyage « selon » chacun.
+  // Repli sans jugement : réservé (figé) > choix perso > ★ retenu. Aucun écart ni
+  // gagnant affiché — c'est une comparaison, pas une compétition.
+  const duoSections = withHotels.map(({ step, rows }) => {
+    const booked = rows.find(r => r.booked)
+    const chosen = rows.find(r => r.selected)
+    const picks = USERS.map(u => {
+      const perso = rows.find(r => r.favs?.[u])
+      const pick = booked || perso || chosen || null
+      const tag = booked ? '✓ réservé' : perso ? null : chosen ? '= ★' : 'aucun hôtel choisi'
+      return { u, pick, tag }
+    })
+    const same = picks[0].pick && picks[1].pick && picks[0].pick.id === picks[1].pick.id
+    return { step, picks, same }
+  })
+  const duoTotals = USERS.map((u, i) => {
+    let hotels = 0, perso = 0
+    for (const { picks } of duoSections) {
+      const p = picks[i]
+      if (p.pick) hotels += p.pick.total ?? 0
+      if (!p.tag) perso++
+    }
+    return { u, hotels, perso }
+  })
+
   const chips = [
     counts.reserve > 0 && { n: counts.reserve, label: `réservée${counts.reserve > 1 ? 's' : ''}`, color: '#4ade80' },
     counts.accord > 0 && { n: counts.accord, label: "d'accord", color: '#4ade80' },
@@ -210,6 +239,16 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
             </div>
             <div style={{ fontSize: 11, color: '#8fa8c4', marginTop: 2 }}>
               ★ = retenu pour le budget · J/A = le choix de chacun
+            </div>
+            <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.06)', borderRadius: 9, padding: 2, gap: 2, marginTop: 8 }}>
+              {[['steps', 'Par étape'], ['duo', `${USERS[0]} & ${USERS[1]}`]].map(([k, label]) => (
+                <button key={k} onClick={() => setView(k)} style={{
+                  border: 'none', borderRadius: 7, cursor: 'pointer',
+                  padding: isMobile ? '8px 12px' : '5px 11px', fontSize: 11, fontWeight: 700,
+                  background: view === k ? '#38bdf8' : 'transparent',
+                  color: view === k ? '#0d1f3c' : '#8fa8c4',
+                }}>{label}</button>
+              ))}
             </div>
             {chips.length > 0 && (
               <div style={{ display: 'flex', gap: 5, marginTop: 7, flexWrap: 'wrap' }}>
@@ -239,7 +278,55 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
               <span style={{ fontSize: 12 }}>Ouvre une étape → onglet Budget → ajoute des hôtels ou colle des liens Booking.</span>
             </div>
           )}
-          {withHotels.map(({ step, rows, minTotal, pricedCount }) => {
+          {view === 'duo' && duoSections.map(({ step, picks, same }) => (
+            <div key={step.id} style={{ marginBottom: 12 }}>
+              <div style={{
+                display: 'flex', alignItems: 'baseline', gap: 8, padding: '6px 2px 4px',
+                borderBottom: '1px solid rgba(56,189,248,0.15)', marginBottom: 6,
+              }}>
+                <span style={{ fontSize: 13.5, fontWeight: 800, color: '#e8f4fd' }}>{step.nom}</span>
+                <span style={{ fontSize: 11, color: '#8fa8c4' }}>{step.dates}</span>
+              </div>
+              {same ? (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                  background: 'rgba(74,222,128,0.08)', border: '1px solid rgba(74,222,128,0.2)',
+                  borderRadius: 8, padding: '8px 11px',
+                }}>
+                  <Avatar name={USERS[0]} size={14} /><Avatar name={USERS[1]} size={14} />
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#4ade80' }}>Même hôtel :</span>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: '#e8f4fd' }}>{picks[0].pick.name}</span>
+                  {picks[0].tag && <span style={{ fontSize: 10.5, color: '#8fa8c4' }}>{picks[0].tag}</span>}
+                  <span style={{ marginLeft: 'auto', fontSize: 12.5, fontWeight: 700, color: '#e8f4fd' }}>
+                    {picks[0].pick.total != null ? fmtCHF(picks[0].pick.total) : '—'}
+                  </span>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 6 }}>
+                  {picks.map(({ u, pick, tag }) => {
+                    const c = USER_COLOR[u] || '#8fa8c4'
+                    return (
+                      <div key={u} style={{
+                        display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap',
+                        background: c + '0d', borderLeft: `3px solid ${c}`,
+                        borderRadius: 8, padding: '8px 11px',
+                      }}>
+                        <Avatar name={u} size={14} />
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: pick ? '#e8f4fd' : '#8fa8c4', fontStyle: pick ? 'normal' : 'italic' }}>
+                          {pick ? pick.name : 'aucun hôtel choisi'}
+                        </span>
+                        {pick && tag && <span style={{ fontSize: 10.5, color: '#8fa8c4' }}>{tag}</span>}
+                        <span style={{ marginLeft: 'auto', fontSize: 12.5, fontWeight: 700, color: '#e8f4fd' }}>
+                          {pick?.total != null ? fmtCHF(pick.total) : '—'}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
+          {view === 'steps' && withHotels.map(({ step, rows, minTotal, pricedCount }) => {
             const bookedRow = rows.find(r => r.booked)
             const folded = bookedRow && rows.length > 1 && !unfolded.has(step.id)
             const shownRows = folded ? rows.filter(r => r.booked) : rows
@@ -350,16 +437,31 @@ export function TripComparePanel({ steps, mainSteps, excursions = [], getHotels,
             flexShrink: 0, padding: '12px 20px 16px', borderTop: '1px solid rgba(255,255,255,0.09)',
             background: '#0e3468', borderRadius: '0 0 20px 20px',
           }}>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <Stat label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><TransportIcon mode="plane" size={12} />Transports</span>}
-                value={fmtCHF(transport.price)}
-                sub={`${transport.km.toLocaleString('fr-FR')} km · ${formatDuration(transport.durMin)}`}
-                color="#f87171" />
-              <Stat label="Hôtels retenus (★)" value={fmtCHF(sumChosen)}
-                sub={`${withHotels.length} étape${withHotels.length > 1 ? 's' : ''}`} color="#4ade80" />
-              <Stat label="Total voyage" value={fmtCHF(sumChosen + transport.price)}
-                sub="transports + hôtels ★" color="#38bdf8" bold />
-            </div>
+            {view === 'steps' ? (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <Stat label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><TransportIcon mode="plane" size={12} />Transports</span>}
+                  value={fmtCHF(transport.price)}
+                  sub={`${transport.km.toLocaleString('fr-FR')} km · ${formatDuration(transport.durMin)}`}
+                  color="#f87171" />
+                <Stat label="Hôtels retenus (★)" value={fmtCHF(sumChosen)}
+                  sub={`${withHotels.length} étape${withHotels.length > 1 ? 's' : ''}`} color="#4ade80" />
+                <Stat label="Total voyage" value={fmtCHF(sumChosen + transport.price)}
+                  sub="transports + hôtels ★" color="#38bdf8" bold />
+              </div>
+            ) : (
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {duoTotals.map(({ u, hotels, perso }) => (
+                  <Stat
+                    key={u}
+                    label={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}><Avatar name={u} size={13} />Voyage selon {u}</span>}
+                    value={fmtCHF(hotels + transport.price)}
+                    sub={`hôtels ${fmtCHF(hotels)} + transports ${fmtCHF(transport.price)} · ${perso} choix perso`}
+                    color={USER_COLOR[u] || '#8fa8c4'}
+                    bold
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
